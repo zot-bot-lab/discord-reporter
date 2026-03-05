@@ -13,13 +13,155 @@ const client = new Client({
   ]
 });
 
-// Function to convert ISO 8601 duration (PT5H30M) to seconds
+// ── Shared Formatters (created once, reused everywhere) ──────────────
+const dateFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Colombo',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit'
+});
+
+const dateWithWeekdayFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Colombo',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  weekday: 'short'
+});
+
+const timeFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'Asia/Colombo',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false
+});
+
+// ── Helpers ──────────────────────────────────────────────────────────
+
+/** Convert ISO 8601 duration (PT5H30M) to seconds */
 function parseISODuration(duration) {
   const match = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(duration);
   if (!match) return 0;
   const [, h, m, s] = match.map(x => parseInt(x || "0"));
   return h * 3600 + m * 60 + s;
 }
+
+/**
+ * Walks backward from yesterday to find the most recent working day
+ * (skipping weekends and public/mercantile holidays).
+ * @param {Date} now - The current date/time
+ * @returns {{ targetDate: Date, targetDateStr: string, displayDate: string }}
+ */
+function getLastWorkingDay(now) {
+  let candidate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+  while (true) {
+    const parts = dateWithWeekdayFormatter.formatToParts(candidate);
+    const y = parts.find(p => p.type === 'year').value;
+    const m = parts.find(p => p.type === 'month').value;
+    const d = parts.find(p => p.type === 'day').value;
+    const wd = parts.find(p => p.type === 'weekday').value;
+
+    const dateStr = `${y}-${m}-${d}`;
+    const displayStr = `${d}/${m}/${y}`;
+
+    if (wd === 'Sat' || wd === 'Sun' || isPublicHoliday(dateStr)) {
+      candidate = new Date(candidate.getTime() - 24 * 60 * 60 * 1000);
+    } else {
+      return { targetDate: candidate, targetDateStr: dateStr, displayDate: displayStr };
+    }
+  }
+}
+
+/**
+ * Fetch and process a single user's Clockify logs for the target date.
+ * @returns {{ type: 'issue'|'praise'|'ok', message?: string }}
+ */
+async function processUser(userId, discordTag, workspaceId, headers, startUTC, endUTC, targetDateStr) {
+  try {
+    const url = `https://api.clockify.me/api/v1/workspaces/${workspaceId}/user/${userId}/time-entries?start=${startUTC}&end=${endUTC}`;
+    console.log(`Fetching logs for <@${discordTag}>...`);
+
+    const reportRes = await fetch(url, { method: "GET", headers });
+
+    if (!reportRes.ok) {
+      const errorText = await reportRes.text();
+      console.error(`Clockify API error for <@${discordTag}>: ${reportRes.status}`);
+      console.error(`Response: ${errorText}`);
+      return { type: 'issue', message: `⚠️ <@${discordTag}>\n- Error fetching logs` };
+    }
+
+    const logs = await reportRes.json();
+    console.log(`\n--- <@${discordTag}> ---`);
+    console.log(`Total logs returned: ${logs.length}`);
+
+    if (!logs || !logs.length) {
+      return { type: 'issue', message: `❌ <@${discordTag}>\n- No logs` };
+    }
+
+    // Filter logs – include only entries that started on the target date
+    const targetDateLogs = logs.filter(log => {
+      if (!log.timeInterval?.start || !log.timeInterval?.end) return false;
+
+      const logStart = new Date(log.timeInterval.start);
+      const logEnd = new Date(log.timeInterval.end);
+
+      const startDateStr = dateFormatter.format(logStart);
+      const isIncluded = startDateStr === targetDateStr;
+
+      const startTime = timeFormatter.format(logStart);
+      const endTime = timeFormatter.format(logEnd);
+      const endDateStr = dateFormatter.format(logEnd);
+
+      console.log(
+        `  ${isIncluded ? '✓' : '✗'} [${startDateStr} ${startTime}] to [${endDateStr} ${endTime}] - ${log.timeInterval.duration} - "${log.description?.substring(0, 40) || '(empty)'}"`
+      );
+
+      return isIncluded;
+    });
+
+    console.log(`Filtered logs (included): ${targetDateLogs.length}`);
+
+    if (!targetDateLogs.length) {
+      return { type: 'issue', message: `❌ <@${discordTag}>\n- No logs` };
+    }
+
+    let totalSeconds = 0;
+    let hasEmptyDescription = false;
+
+    for (const log of targetDateLogs) {
+      if (!log.description || log.description.trim() === "") {
+        hasEmptyDescription = true;
+      }
+      if (log.timeInterval?.duration) {
+        totalSeconds += parseISODuration(log.timeInterval.duration);
+      }
+    }
+
+    const totalHours = totalSeconds / 3600;
+    const hours = Math.floor(totalHours);
+    const minutes = Math.round((totalHours - hours) * 60);
+    const timeLogged = `${hours}h ${minutes}m`;
+
+    const issues = [];
+    if (hasEmptyDescription) issues.push("Descriptions missing");
+    if (totalHours < 6) issues.push("Logs missing");
+
+    if (issues.length > 0) {
+      return { type: 'issue', message: `⚠️ <@${discordTag}> (${timeLogged})\n- ${issues.join("\n- ")}` };
+    } else if (totalHours > 6.5) {
+      return { type: 'praise', message: `🌟 <@${discordTag}> (${timeLogged})` };
+    }
+
+    return { type: 'ok' };
+
+  } catch (error) {
+    console.error(`Error processing logs for <@${discordTag}>:`, error);
+    return { type: 'issue', message: `⚠️ <@${discordTag}>\n- Error fetching logs` };
+  }
+}
+
+// ── Main Report Function ─────────────────────────────────────────────
 
 async function getClockifyLogs() {
   const workspaceId = process.env.CLOCKIFY_WORKSPACE_ID;
@@ -28,184 +170,51 @@ async function getClockifyLogs() {
     "Content-Type": "application/json"
   };
 
-  // Get the last working day's date in Sri Lanka timezone (UTC+5:30)
   const now = new Date();
 
-  // Get today in Sri Lankan timezone
-  const sriLankaFormatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Colombo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    weekday: 'short'
-  });
-
-  // Determine how many days to go back based on current day
-  const todayParts = sriLankaFormatter.formatToParts(now);
+  // Check if TODAY is a holiday or weekend – no need to run at all
+  const todayParts = dateWithWeekdayFormatter.formatToParts(now);
   const dayOfWeek = todayParts.find(p => p.type === 'weekday').value;
+  const todayDateStr = dateFormatter.format(now);
 
-  let daysToGoBack = 1; // Default: yesterday
-
-  // If today is Monday, go back 3 days to get Friday
-  if (dayOfWeek === 'Mon') {
-    daysToGoBack = 3;
-  }
-
-  const targetDate = new Date(now.getTime() - daysToGoBack * 24 * 60 * 60 * 1000);
-  const targetDateInSL = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Colombo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).format(targetDate);
-
-  const [year, month, day] = targetDateInSL.split('-');
-  const displayDate = `${day}/${month}/${year}`;
-  const targetDateStr = targetDateInSL; // YYYY-MM-DD format
-
-  // Check if target date is a public holiday
-  if (isPublicHoliday(targetDateStr)) {
+  if (isPublicHoliday(todayDateStr)) {
     console.log(`\n========================================`);
-    console.log(`Skipping report: ${targetDateStr} is a public holiday in Sri Lanka.`);
+    console.log(`Skipping bot run: Today (${todayDateStr}) is a public/mercantile holiday in Sri Lanka.`);
     console.log(`========================================\n`);
     return null;
   }
 
-  // Query a wider range to make sure we get all logs
-  // Go from 5 days ago to today to cover all possible timezone overlaps and weekends
-  const fiveDaysAgo = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
-  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  // Find the last working day (skips weekends + holidays automatically)
+  const { targetDate, targetDateStr, displayDate } = getLastWorkingDay(now);
 
+  // Query a wider range to cover timezone overlaps and weekends
+  const fiveDaysAgo = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
+  const tomorrow = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000);
   const startUTC = fiveDaysAgo.toISOString();
   const endUTC = tomorrow.toISOString();
 
+  const actualDaysGoneBack = Math.round((now.getTime() - targetDate.getTime()) / (24 * 60 * 60 * 1000));
+
   console.log(`\n========================================`);
-  console.log(`Today: ${dayOfWeek} - Going back ${daysToGoBack} day(s)`);
+  console.log(`Today: ${dayOfWeek} - Going back ${actualDaysGoneBack} day(s)`);
   console.log(`TARGET DATE: ${displayDate} (${targetDateStr}) Sri Lankan Time`);
   console.log(`Query range (wide): ${startUTC} to ${endUTC}`);
   console.log(`========================================\n`);
 
-  // Header for the report
-  let reportHeader = `📝 **Daily Time Log Report** - ${displayDate}`;
+  // ── Fetch all users in parallel ──────────────────────────────────
+  const userEntries = Object.entries(USERS);
+  const results = await Promise.all(
+    userEntries.map(([userId, discordTag]) =>
+      processUser(userId, discordTag, workspaceId, headers, startUTC, endUTC, targetDateStr)
+    )
+  );
 
-  let issuesList = [];
-  let praiseList = [];
+  // Collate results
+  const issuesList = results.filter(r => r.type === 'issue').map(r => r.message);
+  const praiseList = results.filter(r => r.type === 'praise').map(r => r.message);
 
-  for (const [userId, discordTag] of Object.entries(USERS)) {
-    try {
-      // Use the time-entries endpoint instead of reports
-      const url = `https://api.clockify.me/api/v1/workspaces/${workspaceId}/user/${userId}/time-entries?start=${startUTC}&end=${endUTC}`;
-
-      console.log(`Fetching logs for <@${discordTag}>...`);
-      console.log(`URL: ${url}`);
-
-      const reportRes = await fetch(url, {
-        method: "GET",
-        headers
-      });
-
-      if (!reportRes.ok) {
-        const errorText = await reportRes.text();
-        console.error(`Clockify API error for <@${discordTag}>: ${reportRes.status}`);
-        console.error(`Response: ${errorText}`);
-        issuesList.push(`⚠️ <@${discordTag}>\n- Error fetching logs`);
-        continue;
-      }
-
-      const logs = await reportRes.json();
-      console.log(`\n--- <@${discordTag}> ---`);
-      console.log(`Total logs returned: ${logs.length}`);
-
-      if (!logs || !logs.length) {
-        issuesList.push(`❌ <@${discordTag}>\n- No logs`);
-        continue;
-      }
-
-      // Filter logs - only include if BOTH start AND end are within target date
-      const targetDateLogs = logs.filter(log => {
-        if (!log.timeInterval?.start || !log.timeInterval?.end) return false;
-
-        const logStart = new Date(log.timeInterval.start);
-        const logEnd = new Date(log.timeInterval.end);
-
-        // Format both start and end time to Sri Lankan date
-        const dateFormatter = new Intl.DateTimeFormat('en-CA', {
-          timeZone: 'Asia/Colombo',
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit'
-        });
-
-        const startDateStr = dateFormatter.format(logStart);
-        const endDateStr = dateFormatter.format(logEnd);
-
-        // Include log only if it starts on the target date
-        // (We use start time as the primary indicator of which day the work was done)
-        const isIncluded = startDateStr === targetDateStr;
-
-        // Create time formatter for display
-        const timeFormatter = new Intl.DateTimeFormat('en-US', {
-          timeZone: 'Asia/Colombo',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false
-        });
-
-        const startTime = timeFormatter.format(logStart);
-        const endTime = timeFormatter.format(logEnd);
-
-        console.log(
-          `  ${isIncluded ? '✓' : '✗'} [${startDateStr} ${startTime}] to [${endDateStr} ${endTime}] - ${log.timeInterval.duration} - "${log.description?.substring(0, 40) || '(empty)'}"`
-        );
-
-        return isIncluded;
-      });
-
-      console.log(`Filtered logs (included): ${targetDateLogs.length}`);
-
-      if (!targetDateLogs.length) {
-        issuesList.push(`❌ <@${discordTag}>\n- No logs`);
-        continue;
-      }
-
-      let totalSeconds = 0;
-      let hasEmptyDescription = false;
-
-      for (const log of targetDateLogs) {
-        if (!log.description || log.description.trim() === "") {
-          hasEmptyDescription = true;
-        }
-        if (log.timeInterval?.duration) {
-          totalSeconds += parseISODuration(log.timeInterval.duration);
-        }
-      }
-
-      const totalHours = totalSeconds / 3600;
-      const hours = Math.floor(totalHours);
-      const minutes = Math.round((totalHours - hours) * 60);
-      const timeLogged = `${hours}h ${minutes}m`;
-
-      const issues = [];
-      if (hasEmptyDescription) {
-        issues.push("Descriptions missing");
-      }
-      if (totalHours < 6) {
-        issues.push("Logs missing");
-      }
-
-      if (issues.length > 0) {
-        issuesList.push(`⚠️ <@${discordTag}> (${timeLogged})\n- ${issues.join("\n- ")}`);
-      } else if (totalHours > 6.5) {
-        praiseList.push(`🌟 <@${discordTag}> (${timeLogged})`);
-      }
-
-    } catch (error) {
-      console.error(`Error processing logs for <@${discordTag}>:`, error);
-      issuesList.push(`⚠️ <@${discordTag}>\n- Error fetching logs`);
-    }
-  }
-
-  let finalReport = [reportHeader];
+  // Build final report
+  let finalReport = [`📝 **Daily Time Log Report** - ${displayDate}`];
 
   if (issuesList.length > 0) {
     finalReport.push(`\n👇 **Attention Needed**`);
@@ -218,12 +227,13 @@ async function getClockifyLogs() {
   }
 
   if (issuesList.length === 0 && praiseList.length === 0) {
-    // If everyone is between 6.0 and 6.5 or valid but not "Top"
     finalReport.push(`\n✅ All good! Everyone met the targets.`);
   }
 
   return finalReport.join("\n");
 }
+
+// ── Scheduling & Startup ─────────────────────────────────────────────
 
 // Run every weekday (Mon–Fri) at 4:00 PM Colombo time
 cron.schedule(
@@ -268,10 +278,10 @@ client.once("clientReady", async () => {
       } else {
         console.log("ℹ️ No report to send (Holiday or empty).");
       }
-      process.exit(0); // Exit after sending (or skipping)
+      process.exit(0);
     } catch (err) {
       console.error("Error sending report:", err);
-      process.exit(1); // Exit with error
+      process.exit(1);
     }
   }
 });
