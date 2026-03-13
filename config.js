@@ -91,15 +91,15 @@ const config = {
     // Clockify user IDs mapped to Discord usernames or tags
     // clockify_id: { discordId, name }
     users: {
-        "672874f70069dd2e09a53498": { discordId: "1302874198812655687", name: "chamika" },
-        "6777d1891c567d719f83c4c1": { discordId: "1323952767953408032", name: "charith" },
-        "65ba46ea34b49b480cab146d": { discordId: "1185813501894201386", name: "dilan" },
-        "65218021e5c62943e1ba89aa": { discordId: "890601217691090954",  name: "shakthi" },
-        "652182e8e5c62943e1ba9a96": { discordId: "1000320547957248040", name: "sheron" },
-        "684182980300f917a0fbc273": { discordId: "1369530176198676550", name: "vishal" },
-        "64af043d5a1474600d24ede6": { discordId: "889764524473860116",  name: "megha" },
-        "68ff1ff0da72376ea5d5850b": { discordId: "1431195342912622697", name: "nimsara" },
-        "697703496790704cd5eb356a": { discordId: "1217796032377913385", name: "chanu" }
+        "672874f70069dd2e09a53498": { discordId: "1302874198812655687", name: "Chamika" },
+        "6777d1891c567d719f83c4c1": { discordId: "1323952767953408032", name: "Charith" },
+        "65ba46ea34b49b480cab146d": { discordId: "1185813501894201386", name: "Dilan" },
+        "65218021e5c62943e1ba89aa": { discordId: "890601217691090954", name: "Shakthi" },
+        "652182e8e5c62943e1ba9a96": { discordId: "1000320547957248040", name: "Sheron" },
+        "684182980300f917a0fbc273": { discordId: "1369530176198676550", name: "Vishal" },
+        "64af043d5a1474600d24ede6": { discordId: "889764524473860116", name: "Megha" },
+        "68ff1ff0da72376ea5d5850b": { discordId: "1431195342912622697", name: "Nimsara" },
+        "697703496790704cd5eb356a": { discordId: "1217796032377913385", name: "Chanu" }
     },
 
     thresholds: {
@@ -110,7 +110,7 @@ const config = {
     },
 
     timezone: 'Asia/Colombo',
-    
+
     isPublicHoliday
 };
 

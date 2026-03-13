@@ -172,7 +172,7 @@ async function processUserDaily(userId, userObj, workspaceId, headers, startUTC,
     });
 
     if (!targetDateLogs.length) {
-      return { type: 'issue', message: `<@${userObj.discordId}>\n- No logs` };
+      return { type: 'issue', message: `**${userObj.name}**\n- No logs` };
     }
 
     let totalSeconds = 0;
@@ -194,13 +194,13 @@ async function processUserDaily(userId, userObj, workspaceId, headers, startUTC,
     if (totalHours < config.thresholds.dailyMinHours) issues.push("Logs missing");
 
     if (issues.length > 0) {
-      return { type: 'issue', message: `<@${userObj.discordId}> (${timeLogged})\n- ${issues.join("\n- ")}` };
+      return { type: 'issue', message: `**${userObj.name}** (${timeLogged})\n- ${issues.join("\n- ")}` };
     } else if (totalHours > config.thresholds.dailyPraiseHours) {
-      return { type: 'praise', message: `<@${userObj.discordId}> (${timeLogged})` };
+      return { type: 'praise', message: `**${userObj.name}** (${timeLogged})` };
     }
     return { type: 'ok' };
   } catch (error) {
-    return { type: 'issue', message: `<@${userObj.discordId}>\n- Error fetching logs` };
+    return { type: 'issue', message: `**${userObj.name}**\n- Error fetching logs` };
   }
 }
 
@@ -245,16 +245,22 @@ async function processUserWeekly(userId, userObj, workspaceId, headers, startUTC
         const logStart = new Date(log.timeInterval.start);
         const dateStr = dateFormatter.format(logStart);
         
-        // Only care about expected working days in our range
+        let secs = 0;
+        if (log.timeInterval?.duration) {
+          secs = parseISODuration(log.timeInterval.duration);
+          
+          // Only add to weekly total if the log falls strictly between lastMonday and lastSunday boundaries
+          if (logStart >= lastMonday && logStart <= lastSunday) {
+            totalSecondsList += secs;
+          }
+        }
+
+        // Only care about tracking missing descriptions for expected working days
         if (logsByDate[dateStr] !== undefined) {
           if (!log.description || log.description.trim() === "") {
             logsByDate[dateStr].hasEmptyDesc = true;
           }
-          if (log.timeInterval?.duration) {
-            const secs = parseISODuration(log.timeInterval.duration);
-            logsByDate[dateStr].durationSecs += secs;
-            totalSecondsList += secs;
-          }
+          logsByDate[dateStr].durationSecs += secs;
         }
       }
     }
@@ -315,7 +321,7 @@ async function getDailyReport(workspaceId, headers, now) {
   const issuesList = results.filter(r => r.type === 'issue').map(r => r.message);
   const praiseList = results.filter(r => r.type === 'praise').map(r => r.message);
 
-  let finalReport = [`**Daily Time Log Report** - ${displayDate}`];
+  let finalReport = [`<@889764524473860116> **Daily Time Log Report** - ${displayDate}`];
 
   if (issuesList.length > 0) {
     finalReport.push(`\n**Attention Needed**`);
