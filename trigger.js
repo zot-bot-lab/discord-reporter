@@ -1,3 +1,4 @@
+process.env.TZ = 'Asia/Colombo';
 const { Client, GatewayIntentBits } = require("discord.js");
 const dotenv = require("dotenv");
 const config = require("./config.js");

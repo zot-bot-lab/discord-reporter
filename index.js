@@ -1,3 +1,4 @@
+process.env.TZ = 'Asia/Colombo';
 const { Client, GatewayIntentBits } = require("discord.js");
 const dotenv = require("dotenv");
 const cron = require("node-cron");
@@ -82,10 +83,10 @@ function isFirstWorkingDayOfWeek(now) {
   const currentDayOfWeek = now.getDay(); // 0(Sun) - 6(Sat)
   // Convert to 1(Mon) - 7(Sun)
   const currentIsoWeekday = currentDayOfWeek === 0 ? 7 : currentDayOfWeek;
-  
+
   // If it's a weekend, it's never the first working day
   if (currentIsoWeekday > 5) return false;
-  
+
   const todayDateStr = dateFormatter.format(now);
   if (config.isPublicHoliday(todayDateStr)) return false;
 
@@ -109,10 +110,10 @@ function getPreviousWeekRange(now) {
   // now is Colombo time. We need last week's Monday and Sunday.
   const currentDayOfWeek = now.getDay();
   const currentIsoWeekday = currentDayOfWeek === 0 ? 7 : currentDayOfWeek;
-  
+
   const lastSunday = new Date(now);
   lastSunday.setDate(lastSunday.getDate() - currentIsoWeekday);
-  
+
   const lastMonday = new Date(lastSunday);
   lastMonday.setDate(lastMonday.getDate() - 6);
 
@@ -129,10 +130,10 @@ function getPreviousWeekRange(now) {
 function getWorkingDays(startDate, endDate) {
   let count = 0;
   let current = new Date(startDate);
-  current.setHours(0,0,0,0);
-  
+  current.setHours(0, 0, 0, 0);
+
   const end = new Date(endDate);
-  end.setHours(0,0,0,0);
+  end.setHours(0, 0, 0, 0);
 
   while (current <= end) {
     const wd = current.getDay();
@@ -220,10 +221,10 @@ async function processUserWeekly(userId, userObj, workspaceId, headers, startUTC
     }
 
     const logs = await reportRes.json();
-    
+
     // Group logs by Date string "YYYY-MM-DD"
     const logsByDate = {};
-    
+
     // Initialize working days in logsByDate with empty arrays
     let current = new Date(lastMonday);
     while (current <= lastSunday) {
@@ -238,17 +239,17 @@ async function processUserWeekly(userId, userObj, workspaceId, headers, startUTC
     }
 
     let totalSecondsList = 0;
-    
+
     if (logs && logs.length > 0) {
       for (const log of logs) {
         if (!log.timeInterval?.start || !log.timeInterval?.end) continue;
         const logStart = new Date(log.timeInterval.start);
         const dateStr = dateFormatter.format(logStart);
-        
+
         let secs = 0;
         if (log.timeInterval?.duration) {
           secs = parseISODuration(log.timeInterval.duration);
-          
+
           // Only add to weekly total if the log falls strictly between lastMonday and lastSunday boundaries
           if (logStart >= lastMonday && logStart <= lastSunday) {
             totalSecondsList += secs;
@@ -285,13 +286,13 @@ async function processUserWeekly(userId, userObj, workspaceId, headers, startUTC
 
     if (totalHours < minHours) {
       let msg = `<@${userObj.discordId}> (${timeLogged})`;
-      if (missingLogDays.length > 0) msg += `\n- Missing logs on: ${missingLogDays.join(", ")}`;
+      if (missingLogDays.length > 0) msg += `\n- Incomplete logs on: ${missingLogDays.join(", ")}`;
       if (missingDescDays.length > 0) msg += `\n- Descriptions missing on: ${missingDescDays.join(", ")}`;
       return { type: 'issue', message: msg, totalHours };
     } else if (totalHours > praiseHours) {
       return { type: 'praise', message: `<@${userObj.discordId}> (${timeLogged})`, totalHours };
     }
-    
+
     // Normal case (between min and praise)
     return { type: 'normal', message: `<@${userObj.discordId}> (${timeLogged})`, totalHours };
   } catch (error) {
@@ -343,7 +344,7 @@ async function getDailyReport(workspaceId, headers, now) {
 async function getWeeklySummary(workspaceId, headers, now) {
   const { lastMonday, lastSunday } = getPreviousWeekRange(now);
   const workingDays = getWorkingDays(lastMonday, lastSunday);
-  
+
   if (workingDays === 0) {
     console.log("[Weekly] No working days in the previous week! Skipping.");
     return null;
@@ -352,10 +353,10 @@ async function getWeeklySummary(workspaceId, headers, now) {
   // Widen UTC window just in case
   const startQuery = new Date(lastMonday.getTime() - 2 * 24 * 60 * 60 * 1000);
   const endQuery = new Date(lastSunday.getTime() + 2 * 24 * 60 * 60 * 1000);
-  
+
   const startUTC = startQuery.toISOString();
   const endUTC = endQuery.toISOString();
-  
+
   console.log(`[Weekly] Summarizing ${dateFormatter.format(lastMonday)} to ${dateFormatter.format(lastSunday)}`);
   console.log(`[Weekly] Working Days: ${workingDays}`);
 
@@ -409,7 +410,7 @@ async function runGenerators() {
   }
 
   const dailyReport = await getDailyReport(workspaceId, headers, now);
-  
+
   let weeklyReport = null;
   if (isFirstWorkingDayOfWeek(now)) {
     console.log("[Trigger] First working day of the week detected -> generating Weekly report.");
