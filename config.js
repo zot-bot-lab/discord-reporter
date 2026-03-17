@@ -91,15 +91,19 @@ const config = {
     // Clockify user IDs mapped to Discord usernames or tags
     // clockify_id: { discordId, name }
     users: {
-        "672874f70069dd2e09a53498": { discordId: "1302874198812655687", name: "Chamika" },
-        "6777d1891c567d719f83c4c1": { discordId: "1323952767953408032", name: "Charith" },
-        "65ba46ea34b49b480cab146d": { discordId: "1185813501894201386", name: "Dilan" },
-        "65218021e5c62943e1ba89aa": { discordId: "890601217691090954", name: "Shakthi" },
-        "652182e8e5c62943e1ba9a96": { discordId: "1000320547957248040", name: "Sheron" },
-        "684182980300f917a0fbc273": { discordId: "1369530176198676550", name: "Vishal" },
-        "64af043d5a1474600d24ede6": { discordId: "889764524473860116", name: "Megha" },
-        "68ff1ff0da72376ea5d5850b": { discordId: "1431195342912622697", name: "Nimsara" },
-        "697703496790704cd5eb356a": { discordId: "1217796032377913385", name: "Chanu" }
+        "ADMIN_DULAJ": { discordId: "927228118341652540", name: "Dulaj", birthday: "20-04", role: "admin" },
+        "ADMIN_ISURU": { discordId: "883292926417989632", name: "Isuru", birthday: "13-05", role: "admin" },
+        "ADMIN_SUDARAKA": { discordId: "834681879894425620", name: "Sudaraka", birthday: "29-08", role: "admin" },
+        "ADMIN_MALAKA": { discordId: "563605515138236436", name: "Malaka", birthday: "25-09", role: "admin" },
+        "672874f70069dd2e09a53498": { discordId: "1302874198812655687", name: "Chamika", birthday: "03-08", role: "employee" },
+        "6777d1891c567d719f83c4c1": { discordId: "1323952767953408032", name: "Charith", birthday: "19-06", role: "employee" },
+        "65ba46ea34b49b480cab146d": { discordId: "1185813501894201386", name: "Dilan", birthday: "03-05", role: "employee" },
+        "65218021e5c62943e1ba89aa": { discordId: "890601217691090954", name: "Shakthi", birthday: "09-03", role: "employee" },
+        "652182e8e5c62943e1ba9a96": { discordId: "1000320547957248040", name: "Sheron", birthday: "06-08", role: "employee" },
+        "684182980300f917a0fbc273": { discordId: "1369530176198676550", name: "Vishal", birthday: "14-07", role: "employee" },
+        "64af043d5a1474600d24ede6": { discordId: "889764524473860116", name: "Megha", birthday: "21-04", role: "employee" },
+        "68ff1ff0da72376ea5d5850b": { discordId: "1431195342912622697", name: "Nimsara", birthday: "", role: "employee" },
+        "697703496790704cd5eb356a": { discordId: "1217796032377913385", name: "Chanu", birthday: "21-02", role: "employee" }
     },
 
     thresholds: {

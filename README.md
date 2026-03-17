@@ -5,7 +5,9 @@ A fully automated Node.js bot that queries the Clockify API for time entries and
 ## 🚀 Key Features
 
 - **Daily Reports**: Automatically sent to the Project Management channel every weekday at 4:00 PM Colombo time.
-- **Weekly Summaries**: Automatically sent to the Full-Time Announcements channel on the first working day of each week.
+- **Weekly Summaries**: Clockify logs automatically sent to the Full-Time Announcements channel on the first working day of each week.
+- **Weekly Highlights**: Upcoming birthdays and public holidays sent to the General channel every Monday (mentions @everyone).
+- **Role-Based Filtering**: Distinguishes between `admin` (birthdays only) and `employee` (birthdays + Clockify logs) to reduce noise.
 - **Dynamic Thresholds**: Calculates weekly targets based on actual working days (excluding holidays and weekends).
 - **Holiday Aware**: Skips reporting on Sri Lankan public holidays and adapts weekly triggers accordingly.
 - **Missing Logs Detection**: Flags users with missing time entries or empty descriptions.
@@ -21,7 +23,7 @@ A fully automated Node.js bot that queries the Clockify API for time entries and
 ## ⚙️ Configuration (`config.js`)
 
 The `config.js` file contains:
-- **Users**: Mappings of Clockify IDs to Discord IDs and display names.
+- **Users**: Mappings of Clockify IDs to Discord IDs, display names, birthdays (`DD-MM`), and roles (`admin` or `employee`).
 - **Thresholds**: 
   - Daily Min: 7h
   - Daily Praise: 7.5h
@@ -40,6 +42,7 @@ CLOCKIFY_WORKSPACE_ID=your_workspace_id
 
 PROJECT_MANAGEMENT_CHANNEL_ID=1082295824043737180
 FULL_TIME_ANNOUNCEMENTS_CHANNEL_ID=your_announcements_channel_id
+GENERAL_CHANNEL_ID=your_general_channel_id
 ```
 
 ## 🛠️ Triggers
@@ -60,6 +63,7 @@ The bot is configured to run automatically via GitHub Actions. Ensure the follow
 - `CLOCKIFY_WORKSPACE_ID`
 - `PROJECT_MANAGEMENT_CHANNEL_ID`
 - `FULL_TIME_ANNOUNCEMENTS_CHANNEL_ID`
+- `GENERAL_CHANNEL_ID`
 
 ---
 *Built for ZOT Bot Lab*

@@ -21,7 +21,7 @@ async function forceDispatch() {
     // We import from index.js to reuse logical generators
     // Need to handle the fact that index.js might try to login automatically
     // But since we are requiring it, we can just use its exported methods.
-    const { getDailyReport, getWeeklySummary } = require("./index.js");
+    const { getDailyReport, getWeeklySummary, getWeeklyEventsReport } = require("./index.js");
 
     const workspaceId = process.env.CLOCKIFY_WORKSPACE_ID;
     const headers = {
@@ -29,7 +29,8 @@ async function forceDispatch() {
         "Content-Type": "application/json"
     };
 
-    const now = new Date();
+    // Use DATE_OVERRIDE if provided (e.g. "2026-03-16")
+    const now = process.env.DATE_OVERRIDE ? new Date(process.env.DATE_OVERRIDE) : new Date();
 
     console.log("🚀 Forcing manual report dispatch...");
 
@@ -53,6 +54,20 @@ async function forceDispatch() {
                 const weeklyChannel = await client.channels.fetch(process.env.FULL_TIME_ANNOUNCEMENTS_CHANNEL_ID);
                 await weeklyChannel.send({ content: weekly, allowedMentions: { parse: ['users'] } });
                 console.log("✅ Weekly summary sent.");
+            }
+
+            // 3. Generate Weekly Events (forced)
+            console.log("Generating Weekly Highlights...");
+            const events = getWeeklyEventsReport(now);
+            if (events) {
+                const generalChannel = await client.channels.fetch(process.env.GENERAL_CHANNEL_ID);
+                await generalChannel.send({ 
+                    content: events, 
+                    allowedMentions: { parse: ['everyone', 'users'] } 
+                });
+                console.log("✅ Weekly highlights sent to General.");
+            } else {
+                console.log("ℹ️ No highlights for this week.");
             }
 
             console.log("🎉 Manual trigger complete. Exiting...");

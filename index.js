@@ -21,7 +21,14 @@ const dateFormatter = new Intl.DateTimeFormat('en-CA', {
   day: '2-digit'
 });
 
-const dateWithWeekdayFormatter = new Intl.DateTimeFormat('en-CA', {
+const dmyFormatter = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Asia/Colombo',
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric'
+});
+
+const dateWithWeekdayFormatter = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'Asia/Colombo',
   year: 'numeric',
   month: '2-digit',
@@ -312,7 +319,7 @@ async function getDailyReport(workspaceId, headers, now) {
 
   console.log(`[Daily] TARGET DATE: ${displayDate} (${targetDateStr})`);
 
-  const userEntries = Object.entries(config.users);
+  const userEntries = Object.entries(config.users).filter(([, u]) => u.role === 'employee');
   const results = await Promise.all(
     userEntries.map(([userId, userObj]) =>
       processUserDaily(userId, userObj, workspaceId, headers, startUTC, endUTC, targetDateStr)
@@ -360,7 +367,7 @@ async function getWeeklySummary(workspaceId, headers, now) {
   console.log(`[Weekly] Summarizing ${dateFormatter.format(lastMonday)} to ${dateFormatter.format(lastSunday)}`);
   console.log(`[Weekly] Working Days: ${workingDays}`);
 
-  const userEntries = Object.entries(config.users);
+  const userEntries = Object.entries(config.users).filter(([, u]) => u.role === 'employee');
   const results = await Promise.all(
     userEntries.map(([userId, userObj]) =>
       processUserWeekly(userId, userObj, workspaceId, headers, startUTC, endUTC, lastMonday, lastSunday, workingDays)
@@ -374,7 +381,10 @@ async function getWeeklySummary(workspaceId, headers, now) {
   const praiseList = results.filter(r => r.type === 'praise').map(r => r.message);
   const normalList = results.filter(r => r.type === 'normal').map(r => r.message);
 
-  let finalReport = [`📊 **Weekly Time Log Summary** (${dateFormatter.format(lastMonday)} to ${dateFormatter.format(lastSunday)})`];
+  const startStr = `${lastMonday.getDate().toString().padStart(2, '0')}-${(lastMonday.getMonth() + 1).toString().padStart(2, '0')}`;
+  const endStr = `${lastSunday.getDate().toString().padStart(2, '0')}-${(lastSunday.getMonth() + 1).toString().padStart(2, '0')}`;
+  
+  let finalReport = [`📊 **Weekly Clockify Summary (Last Week)** (${startStr} to ${endStr})`];
 
   if (issuesList.length > 0) {
     finalReport.push(`\n⚠️ **Attention Needed ( < ${minHrs}h )**`);
@@ -394,6 +404,74 @@ async function getWeeklySummary(workspaceId, headers, now) {
   return finalReport.join("\n");
 }
 
+/**
+ * Generates a report for upcoming birthdays and holidays for the current week (Monday to Sunday).
+ */
+function getWeeklyEventsReport(now) {
+  // Current week range: Monday to Sunday
+  const currentDayOfWeek = now.getDay(); // 0(Sun) - 6(Sat)
+  const currentIsoWeekday = currentDayOfWeek === 0 ? 7 : currentDayOfWeek;
+
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (currentIsoWeekday - 1));
+  monday.setHours(0, 0, 0, 0);
+
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+
+  const weekRangeStr = `${dateFormatter.format(monday)} to ${dateFormatter.format(sunday)}`;
+  const birthdays = [];
+  const holidays = [];
+
+  // Check Birthdays
+  for (const user of Object.values(config.users)) {
+    if (user.birthday) {
+      const [day, month] = user.birthday.split('-').map(Number);
+      // Check if birthday falls in this week (ignoring year)
+      let checkDate = new Date(monday);
+      for (let i = 0; i < 7; i++) {
+        if (checkDate.getMonth() + 1 === month && checkDate.getDate() === day) {
+          birthdays.push(`🎂 **${user.name}** (${day}/${month})`);
+          break;
+        }
+        checkDate.setDate(checkDate.getDate() + 1);
+      }
+    }
+  }
+
+  // Check Holidays
+  let checkDate = new Date(monday);
+  for (let i = 0; i < 7; i++) {
+    const dateStr = dateFormatter.format(checkDate);
+    if (config.isPublicHoliday(dateStr)) {
+      holidays.push(`🏖️ **Holiday** (${checkDate.getDate()}/${checkDate.getMonth() + 1}): ${dateStr}`);
+    }
+    checkDate.setDate(checkDate.getDate() + 1);
+  }
+
+  if (birthdays.length === 0 && holidays.length === 0) {
+    return null;
+  }
+
+  const startStr = `${monday.getDate().toString().padStart(2, '0')}-${(monday.getMonth() + 1).toString().padStart(2, '0')}`;
+  const endStr = `${sunday.getDate().toString().padStart(2, '0')}-${(sunday.getMonth() + 1).toString().padStart(2, '0')}`;
+
+  let finalReport = [`@everyone\n🗓️ **Weekly Highlights (This Week)** (${startStr} to ${endStr})`];
+
+  if (birthdays.length > 0) {
+    finalReport.push(`\n**Upcoming Birthdays This Week!**`);
+    finalReport.push(...birthdays);
+  }
+
+  if (holidays.length > 0) {
+    finalReport.push(`\n**Upcoming Public Holidays This Week!**`);
+    finalReport.push(...holidays);
+  }
+
+  return finalReport.join("\n");
+}
+
 async function runGenerators() {
   const workspaceId = process.env.CLOCKIFY_WORKSPACE_ID;
   const headers = {
@@ -406,18 +484,20 @@ async function runGenerators() {
 
   if (config.isPublicHoliday(todayDateStr)) {
     console.log(`Skipping bot run: Today (${todayDateStr}) is a public/mercantile holiday in Sri Lanka.`);
-    return { daily: null, weekly: null };
+    return { daily: null, weekly: null, events: null };
   }
 
   const dailyReport = await getDailyReport(workspaceId, headers, now);
 
   let weeklyReport = null;
+  let eventsReport = null;
   if (isFirstWorkingDayOfWeek(now)) {
     console.log("[Trigger] First working day of the week detected -> generating Weekly report.");
     weeklyReport = await getWeeklySummary(workspaceId, headers, now);
+    eventsReport = getWeeklyEventsReport(now);
   }
 
-  return { daily: dailyReport, weekly: weeklyReport };
+  return { daily: dailyReport, weekly: weeklyReport, events: eventsReport };
 }
 
 // ── Scheduling & Startup ─────────────────────────────────────────────
@@ -426,7 +506,7 @@ async function runGenerators() {
 
 async function sendReports() {
   try {
-    const { daily, weekly } = await runGenerators();
+    const { daily, weekly, events } = await runGenerators();
 
     if (daily) {
       const dailyChannel = await client.channels.fetch(process.env.PROJECT_MANAGEMENT_CHANNEL_ID);
@@ -448,6 +528,17 @@ async function sendReports() {
       console.log("✅ Weekly report sent successfully.");
     } else {
       console.log("ℹ️ No weekly report sent today.");
+    }
+
+    if (events) {
+      const generalChannel = await client.channels.fetch(process.env.GENERAL_CHANNEL_ID);
+      await generalChannel.send({
+        content: events,
+        allowedMentions: { parse: ['everyone', 'users'] }
+      });
+      console.log("✅ Weekly events report sent successfully.");
+    } else {
+      console.log("ℹ️ No weekly events report sent today.");
     }
 
   } catch (err) {
@@ -488,9 +579,10 @@ if (require.main === module) {
   // Test call for local dev testing
   // To test daily vs weekly, uncomment getDailyReport or getWeeklySummary inside runGenerators
   if (!process.env.GITHUB_ACTIONS) {
-    runGenerators().then(({ daily, weekly }) => {
+    runGenerators().then(({ daily, weekly, events }) => {
       if (daily) console.log("\n--- DAILY REPORT ---\n" + daily);
       if (weekly) console.log("\n--- WEEKLY SUMMARY ---\n" + weekly);
+      if (events) console.log("\n--- WEEKLY HIGHLIGHTS ---\n" + events);
     }).catch(console.error);
   }
 }
@@ -498,6 +590,7 @@ if (require.main === module) {
 module.exports = {
   getDailyReport,
   getWeeklySummary,
+  getWeeklyEventsReport,
   isFirstWorkingDayOfWeek,
   getPreviousWeekRange,
   getWorkingDays
