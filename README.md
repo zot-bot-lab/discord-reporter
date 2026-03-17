@@ -1,4 +1,4 @@
-# Clockify Discord Reporter Bot
+# Discord Reporter Bot
 
 A fully automated Node.js bot that queries the Clockify API for time entries and publishes reports to Discord.
 

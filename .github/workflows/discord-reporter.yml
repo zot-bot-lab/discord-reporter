@@ -1,4 +1,4 @@
-name: Clockify Discord Report
+name: Discord Report
 
 on:
   schedule:
