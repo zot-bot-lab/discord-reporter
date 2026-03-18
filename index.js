@@ -166,7 +166,7 @@ async function processUserDaily(userId, userObj, workspaceId, headers, startUTC,
     const reportRes = await fetch(url, { method: "GET", headers });
 
     if (!reportRes.ok) {
-      return { type: 'issue', message: `<@${userObj.discordId}>\n- Error fetching logs` };
+      return { type: 'issue', message: `**${userObj.name}**\n- Error fetching logs` };
     }
 
     const logs = await reportRes.json();
@@ -200,15 +200,16 @@ async function processUserDaily(userId, userObj, workspaceId, headers, startUTC,
 
     const issues = [];
     if (hasEmptyDescription) issues.push("Descriptions missing");
-    
+
     // Adjust threshold for half-day leaves
     const minHoursThreshold = isHalfDay ? (config.thresholds.dailyMinHours / 2) : config.thresholds.dailyMinHours;
     if (totalHours < minHoursThreshold) issues.push("Logs missing");
 
+    const expectedStr = isHalfDay ? ` / ${minHoursThreshold}h expected` : '';
     if (issues.length > 0) {
-      return { type: 'issue', message: `**${userObj.name}** (${timeLogged})\n- ${issues.join("\n- ")}` };
+      return { type: 'issue', message: `**${userObj.name}** (${timeLogged}${expectedStr})\n- ${issues.join("\n- ")}` };
     } else if (totalHours > config.thresholds.dailyPraiseHours) {
-      return { type: 'praise', message: `**${userObj.name}** (${timeLogged})` };
+      return { type: 'praise', message: `**${userObj.name}** (${timeLogged}${expectedStr})` };
     }
     return { type: 'ok' };
   } catch (error) {
@@ -312,7 +313,7 @@ async function processUserWeekly(userId, userObj, workspaceId, headers, startUTC
       if (leave && !leave.isHalfDay) continue; // Skip full day leaves
 
       const threshold = (leave && leave.isHalfDay) ? (config.thresholds.dailyMinHours / 2) : config.thresholds.dailyMinHours;
-      
+
       if (dayData.durationSecs < threshold * 3600) {
         missingLogDays.push(dateStr);
       }
@@ -322,7 +323,8 @@ async function processUserWeekly(userId, userObj, workspaceId, headers, startUTC
     }
 
     const leaveSuffix = leaveDayCount > 0 ? ` - ${leaveDayCount} day leave${leaveDayCount > 1 ? 's' : ''}` : "";
-    let baseMsg = `<@${userObj.discordId}> (${timeLogged})${leaveSuffix}`;
+    const expectedHours = Math.round(minHours);
+    let baseMsg = `<@${userObj.discordId}> (${timeLogged} / ${expectedHours}h expected)${leaveSuffix}`;
 
     if (totalHours < minHours) {
       if (missingLogDays.length > 0) baseMsg += `\n- Incomplete logs on: ${missingLogDays.join(", ")}`;
@@ -448,7 +450,7 @@ async function getWeeklySummary(workspaceId, headers, now) {
 
   // Fetch all approved leaves for the week
   const weekLeaves = await fetchLeaves({ startDate: startStrReq, endDate: endStrReq });
-  
+
   // Group leaves by userId for efficient lookup
   const leavesByUser = {};
   for (const leave of weekLeaves) {
@@ -470,14 +472,14 @@ async function getWeeklySummary(workspaceId, headers, now) {
   const results = await Promise.all(
     userEntries.map(([userId, userObj]) =>
       processUserWeekly(
-        userId, 
-        userObj, 
-        workspaceId, 
-        headers, 
-        startUTC, 
-        endUTC, 
-        lastMonday, 
-        lastSunday, 
+        userId,
+        userObj,
+        workspaceId,
+        headers,
+        startUTC,
+        endUTC,
+        lastMonday,
+        lastSunday,
         workingDays,
         leavesByUser[userId] || []
       )
@@ -490,8 +492,8 @@ async function getWeeklySummary(workspaceId, headers, now) {
 
   const startStr = `${lastMonday.getDate().toString().padStart(2, '0')}-${(lastMonday.getMonth() + 1).toString().padStart(2, '0')}`;
   const endStr = `${lastSunday.getDate().toString().padStart(2, '0')}-${(lastSunday.getMonth() + 1).toString().padStart(2, '0')}`;
-  
-  let finalReport = [`📊 **Weekly Clockify Summary (Last Week)** (${startStr} to ${endStr})`];
+
+  let finalReport = [`📊 **Last Week Clockify Summary** (${startStr} to ${endStr})`];
 
   if (issuesList.length > 0) {
     finalReport.push(`\n⚠️ **Attention Needed**`);
