@@ -10,12 +10,16 @@ A fully automated Node.js bot that queries the Clockify API for time entries and
 - **Role-Based Filtering**: Distinguishes between `admin` (birthdays only) and `employee` (birthdays + Clockify logs) to reduce noise.
 - **Dynamic Thresholds**: Calculates weekly targets based on actual working days (excluding holidays and weekends).
 - **Holiday Aware**: Skips reporting on Sri Lankan public holidays and adapts weekly triggers accordingly.
+- **Leaves Integration**: Automatically fetches approved leaves from the Zotizens API.
+- **Smart Filtering**: Excludes users on full-day leave from "Attention Needed" and halves the log threshold for half-day leave users.
+- **Absence Visibility**: Shows "On Leave Today" (informational) and "On Leave Yesterday" (functional) sections in the daily report.
 - **Missing Logs Detection**: Flags users with missing time entries or empty descriptions.
 - **Top Performers Recognition**: Highlights "Most hours logged" for users exceeding performance targets.
 
 ## 📂 Project Structure
 
 - `index.js`: The core bot logic, scheduling, and report generators.
+- `leaves.js`: Module for fetching and processing leave data from the Zotizens Public API.
 - `config.js`: Centralized configuration for users, holiday dates, and threshold settings.
 - `trigger.js`: A utility script to forcefully trigger both reports immediately.
 - `.env`: Secret credentials and channel-specific IDs.

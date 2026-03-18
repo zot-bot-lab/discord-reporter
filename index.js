@@ -3,6 +3,7 @@ const { Client, GatewayIntentBits } = require("discord.js");
 const dotenv = require("dotenv");
 const cron = require("node-cron");
 const config = require("./config.js");
+const { fetchLeaves, buildLeaveMap } = require("./leaves.js");
 
 dotenv.config();
 
@@ -159,7 +160,7 @@ function getWorkingDays(startDate, endDate) {
  * Fetch and process a single user's Clockify logs for a daily report.
  * @returns {{ type: 'issue'|'praise'|'ok', message?: string }}
  */
-async function processUserDaily(userId, userObj, workspaceId, headers, startUTC, endUTC, targetDateStr) {
+async function processUserDaily(userId, userObj, workspaceId, headers, startUTC, endUTC, targetDateStr, isHalfDay = false) {
   try {
     const url = `https://api.clockify.me/api/v1/workspaces/${workspaceId}/user/${userId}/time-entries?start=${startUTC}&end=${endUTC}`;
     const reportRes = await fetch(url, { method: "GET", headers });
@@ -170,7 +171,7 @@ async function processUserDaily(userId, userObj, workspaceId, headers, startUTC,
 
     const logs = await reportRes.json();
     if (!logs || !logs.length) {
-      return { type: 'issue', message: `<@${userObj.discordId}>\n- No logs` };
+      return { type: 'issue', message: `**${userObj.name}**\n- No logs` };
     }
 
     const targetDateLogs = logs.filter(log => {
@@ -199,7 +200,10 @@ async function processUserDaily(userId, userObj, workspaceId, headers, startUTC,
 
     const issues = [];
     if (hasEmptyDescription) issues.push("Descriptions missing");
-    if (totalHours < config.thresholds.dailyMinHours) issues.push("Logs missing");
+    
+    // Adjust threshold for half-day leaves
+    const minHoursThreshold = isHalfDay ? (config.thresholds.dailyMinHours / 2) : config.thresholds.dailyMinHours;
+    if (totalHours < minHoursThreshold) issues.push("Logs missing");
 
     if (issues.length > 0) {
       return { type: 'issue', message: `**${userObj.name}** (${timeLogged})\n- ${issues.join("\n- ")}` };
@@ -215,10 +219,19 @@ async function processUserDaily(userId, userObj, workspaceId, headers, startUTC,
 /**
  * Fetch and process a single user's Clockify logs for the entire weekly summary.
  */
-async function processUserWeekly(userId, userObj, workspaceId, headers, startUTC, endUTC, lastMonday, lastSunday, workingDays) {
+async function processUserWeekly(userId, userObj, workspaceId, headers, startUTC, endUTC, lastMonday, lastSunday, workingDays, userLeaves = []) {
   try {
-    const minHours = workingDays * config.thresholds.weeklyMinHoursPerDay;
-    const praiseHours = workingDays * config.thresholds.weeklyPraiseHoursPerDay;
+    // Calculate leave days for this user in this week
+    let leaveDayCount = 0;
+    const leaveTypes = new Set();
+    for (const leave of userLeaves) {
+      leaveDayCount += leave.isHalfDay ? 0.5 : 1;
+      leaveTypes.add(leave.leaveType);
+    }
+
+    const adjustedWorkingDays = Math.max(0, workingDays - leaveDayCount);
+    const minHours = adjustedWorkingDays * config.thresholds.weeklyMinHoursPerDay;
+    const praiseHours = adjustedWorkingDays * config.thresholds.weeklyPraiseHoursPerDay;
 
     const url = `https://api.clockify.me/api/v1/workspaces/${workspaceId}/user/${userId}/time-entries?start=${startUTC}&end=${endUTC}`;
     const reportRes = await fetch(url, { method: "GET", headers });
@@ -281,9 +294,26 @@ async function processUserWeekly(userId, userObj, workspaceId, headers, startUTC
     const missingLogDays = [];
     const missingDescDays = [];
 
-    // Check each expected working day
+    // Check each expected working day, accounting for leaves
+    // We fetch leaves by date in the main function to be precise, 
+    // but here we just have the summary. Let's assume userLeaves contains all leave dates.
+    const leaveDates = userLeaves.reduce((acc, l) => {
+      // The leave API returns startDate/endDate. For simplicity in fetchLeaves we get a list of records.
+      // If fetchLeaves was called with a range, it returns all leaves in that range.
+      // We need to know WHICH dates are leaves to skip them in missingLogDays.
+      if (l.date) acc[l.date] = l;
+      // If it's a multi-day leave, we'd need to expand it, but current usage is single days or ranges.
+      // Based on the user's manual curl example, they usually filter by date.
+      return acc;
+    }, {});
+
     for (const [dateStr, dayData] of Object.entries(logsByDate)) {
-      if (dayData.durationSecs < config.thresholds.dailyMinHours * 3600) {
+      const leave = leaveDates[dateStr];
+      if (leave && !leave.isHalfDay) continue; // Skip full day leaves
+
+      const threshold = (leave && leave.isHalfDay) ? (config.thresholds.dailyMinHours / 2) : config.thresholds.dailyMinHours;
+      
+      if (dayData.durationSecs < threshold * 3600) {
         missingLogDays.push(dateStr);
       }
       if (dayData.hasEmptyDesc) {
@@ -291,18 +321,21 @@ async function processUserWeekly(userId, userObj, workspaceId, headers, startUTC
       }
     }
 
+    const leaveSuffix = leaveDayCount > 0 ? ` - ${leaveDayCount} day leave${leaveDayCount > 1 ? 's' : ''}` : "";
+    let baseMsg = `<@${userObj.discordId}> (${timeLogged})${leaveSuffix}`;
+
     if (totalHours < minHours) {
-      let msg = `<@${userObj.discordId}> (${timeLogged})`;
-      if (missingLogDays.length > 0) msg += `\n- Incomplete logs on: ${missingLogDays.join(", ")}`;
-      if (missingDescDays.length > 0) msg += `\n- Descriptions missing on: ${missingDescDays.join(", ")}`;
-      return { type: 'issue', message: msg, totalHours };
+      if (missingLogDays.length > 0) baseMsg += `\n- Incomplete logs on: ${missingLogDays.join(", ")}`;
+      if (missingDescDays.length > 0) baseMsg += `\n- Descriptions missing on: ${missingDescDays.join(", ")}`;
+      return { type: 'issue', message: baseMsg, totalHours };
     } else if (totalHours > praiseHours) {
-      return { type: 'praise', message: `<@${userObj.discordId}> (${timeLogged})`, totalHours };
+      return { type: 'praise', message: baseMsg, totalHours };
     }
 
     // Normal case (between min and praise)
-    return { type: 'normal', message: `<@${userObj.discordId}> (${timeLogged})`, totalHours };
+    return { type: 'normal', message: baseMsg, totalHours };
   } catch (error) {
+    console.error(`Error processing weekly for ${userObj.name}:`, error);
     return { type: 'issue', message: `<@${userObj.discordId}>\n- Error fetching logs`, totalHours: 0 };
   }
 }
@@ -319,17 +352,70 @@ async function getDailyReport(workspaceId, headers, now) {
 
   console.log(`[Daily] TARGET DATE: ${displayDate} (${targetDateStr})`);
 
+  // Fetch leaves for Today and Yesterday (targetDate)
+  const todayDateStr = dateFormatter.format(now);
+  const [todayLeavesData, yesterdayLeavesData] = await Promise.all([
+    fetchLeaves({ date: todayDateStr }),
+    fetchLeaves({ date: targetDateStr })
+  ]);
+
+  const todayLeaveMap = buildLeaveMap(todayLeavesData);
+  const yesterdayLeaveMap = buildLeaveMap(yesterdayLeavesData);
+
   const userEntries = Object.entries(config.users).filter(([, u]) => u.role === 'employee');
+
+  // Process users, excluding/handling those on leave
   const results = await Promise.all(
-    userEntries.map(([userId, userObj]) =>
-      processUserDaily(userId, userObj, workspaceId, headers, startUTC, endUTC, targetDateStr)
-    )
+    userEntries.map(async ([userId, userObj]) => {
+      const leave = yesterdayLeaveMap.get(userId);
+      if (leave && !leave.isHalfDay) {
+        // Full day leave - skip Clockify check
+        return { type: 'on-leave-yesterday', message: `**${userObj.name}** (${leave.leaveType})` };
+      }
+      // Otherwise (no leave OR half day), process check
+      const res = await processUserDaily(userId, userObj, workspaceId, headers, startUTC, endUTC, targetDateStr, !!(leave && leave.isHalfDay));
+      return res;
+    })
   );
+
+  // Handle half-day labels for Yesterday's results
+  // For half-day leaves yesterday, we want to add "(Half Day)" to their results in Praise or Issues
+  results.forEach((r, idx) => {
+    const userId = userEntries[idx][0];
+    const leave = yesterdayLeaveMap.get(userId);
+    if (leave && leave.isHalfDay && (r.type === 'issue' || r.type === 'praise')) {
+      const name = userEntries[idx][1].name;
+      if (r.message.includes(`**${name}**`)) {
+        r.message = r.message.replace(`**${name}**`, `**${name}** (Half Day)`);
+      }
+    }
+  });
 
   const issuesList = results.filter(r => r.type === 'issue').map(r => r.message);
   const praiseList = results.filter(r => r.type === 'praise').map(r => r.message);
+  const onLeaveYesterdayList = results.filter(r => r.type === 'on-leave-yesterday').map(r => r.message);
+
+  // Identify users on leave Today for informational display
+  const onLeaveTodayList = [];
+  for (const [userId, userObj] of userEntries) {
+    const leave = todayLeaveMap.get(userId);
+    if (leave) {
+      const halfDaySuffix = leave.isHalfDay ? " (Half Day)" : "";
+      onLeaveTodayList.push(`**${userObj.name}** (${leave.leaveType}${halfDaySuffix})`);
+    }
+  }
 
   let finalReport = [`<@889764524473860116> **Daily Time Log Report** - ${displayDate}`];
+
+  if (onLeaveTodayList.length > 0) {
+    finalReport.push(`\n**On Leave Today**`);
+    finalReport.push(...onLeaveTodayList);
+  }
+
+  if (onLeaveYesterdayList.length > 0) {
+    finalReport.push(`\n**On Leave Yesterday**`);
+    finalReport.push(...onLeaveYesterdayList);
+  }
 
   if (issuesList.length > 0) {
     finalReport.push(`\n**Attention Needed**`);
@@ -357,6 +443,19 @@ async function getWeeklySummary(workspaceId, headers, now) {
     return null;
   }
 
+  const startStrReq = dateFormatter.format(lastMonday);
+  const endStrReq = dateFormatter.format(lastSunday);
+
+  // Fetch all approved leaves for the week
+  const weekLeaves = await fetchLeaves({ startDate: startStrReq, endDate: endStrReq });
+  
+  // Group leaves by userId for efficient lookup
+  const leavesByUser = {};
+  for (const leave of weekLeaves) {
+    if (!leavesByUser[leave.clockifyUserId]) leavesByUser[leave.clockifyUserId] = [];
+    leavesByUser[leave.clockifyUserId].push(leave);
+  }
+
   // Widen UTC window just in case
   const startQuery = new Date(lastMonday.getTime() - 2 * 24 * 60 * 60 * 1000);
   const endQuery = new Date(lastSunday.getTime() + 2 * 24 * 60 * 60 * 1000);
@@ -364,18 +463,26 @@ async function getWeeklySummary(workspaceId, headers, now) {
   const startUTC = startQuery.toISOString();
   const endUTC = endQuery.toISOString();
 
-  console.log(`[Weekly] Summarizing ${dateFormatter.format(lastMonday)} to ${dateFormatter.format(lastSunday)}`);
-  console.log(`[Weekly] Working Days: ${workingDays}`);
+  console.log(`[Weekly] Summarizing ${startStrReq} to ${endStrReq}`);
+  console.log(`[Weekly] Working Days (Base): ${workingDays}`);
 
   const userEntries = Object.entries(config.users).filter(([, u]) => u.role === 'employee');
   const results = await Promise.all(
     userEntries.map(([userId, userObj]) =>
-      processUserWeekly(userId, userObj, workspaceId, headers, startUTC, endUTC, lastMonday, lastSunday, workingDays)
+      processUserWeekly(
+        userId, 
+        userObj, 
+        workspaceId, 
+        headers, 
+        startUTC, 
+        endUTC, 
+        lastMonday, 
+        lastSunday, 
+        workingDays,
+        leavesByUser[userId] || []
+      )
     )
   );
-
-  const minHrs = workingDays * config.thresholds.weeklyMinHoursPerDay;
-  const praiseHrs = workingDays * config.thresholds.weeklyPraiseHoursPerDay;
 
   const issuesList = results.filter(r => r.type === 'issue').map(r => r.message);
   const praiseList = results.filter(r => r.type === 'praise').map(r => r.message);
@@ -387,7 +494,7 @@ async function getWeeklySummary(workspaceId, headers, now) {
   let finalReport = [`📊 **Weekly Clockify Summary (Last Week)** (${startStr} to ${endStr})`];
 
   if (issuesList.length > 0) {
-    finalReport.push(`\n⚠️ **Attention Needed ( < ${minHrs}h )**`);
+    finalReport.push(`\n⚠️ **Attention Needed**`);
     finalReport.push(...issuesList);
   }
 
@@ -397,7 +504,7 @@ async function getWeeklySummary(workspaceId, headers, now) {
   }
 
   if (praiseList.length > 0) {
-    finalReport.push(`\n🏆 **Most hours logged ( > ${praiseHrs}h )**`);
+    finalReport.push(`\n🏆 **Most hours logged**`);
     finalReport.push(...praiseList);
   }
 
