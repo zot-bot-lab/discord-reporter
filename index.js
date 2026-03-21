@@ -225,9 +225,37 @@ async function processUserWeekly(userId, userObj, workspaceId, headers, startUTC
     // Calculate leave days for this user in this week
     let leaveDayCount = 0;
     const leaveTypes = new Set();
-    for (const leave of userLeaves) {
-      leaveDayCount += leave.isHalfDay ? 0.5 : 1;
-      leaveTypes.add(leave.leaveType);
+    const leaveDates = {};
+
+    for (const l of userLeaves) {
+      if (l.startDate && l.endDate) {
+        let current = new Date(l.startDate);
+        const end = new Date(l.endDate);
+        while (current <= end) {
+          if (current >= lastMonday && current <= lastSunday) {
+            const wd = current.getDay();
+            const dateStr = dateFormatter.format(current);
+            if (wd !== 0 && wd !== 6 && !config.isPublicHoliday(dateStr)) {
+              if (!leaveDates[dateStr]) {
+                leaveDates[dateStr] = l;
+                leaveDayCount += l.isHalfDay ? 0.5 : 1;
+                leaveTypes.add(l.leaveType);
+              }
+            }
+          }
+          current.setDate(current.getDate() + 1);
+        }
+      } else if (l.date) {
+        const d = new Date(l.date);
+        const dateStr = dateFormatter.format(d);
+        if (d >= lastMonday && d <= lastSunday && d.getDay() !== 0 && d.getDay() !== 6 && !config.isPublicHoliday(dateStr)) {
+          if (!leaveDates[dateStr]) {
+            leaveDates[dateStr] = l;
+            leaveDayCount += l.isHalfDay ? 0.5 : 1;
+            leaveTypes.add(l.leaveType);
+          }
+        }
+      }
     }
 
     const adjustedWorkingDays = Math.max(0, workingDays - leaveDayCount);
@@ -295,18 +323,7 @@ async function processUserWeekly(userId, userObj, workspaceId, headers, startUTC
     const missingLogDays = [];
     const missingDescDays = [];
 
-    // Check each expected working day, accounting for leaves
-    // We fetch leaves by date in the main function to be precise, 
-    // but here we just have the summary. Let's assume userLeaves contains all leave dates.
-    const leaveDates = userLeaves.reduce((acc, l) => {
-      // The leave API returns startDate/endDate. For simplicity in fetchLeaves we get a list of records.
-      // If fetchLeaves was called with a range, it returns all leaves in that range.
-      // We need to know WHICH dates are leaves to skip them in missingLogDays.
-      if (l.date) acc[l.date] = l;
-      // If it's a multi-day leave, we'd need to expand it, but current usage is single days or ranges.
-      // Based on the user's manual curl example, they usually filter by date.
-      return acc;
-    }, {});
+    // Check each expected working day, accounting for leaves computed earlier
 
     for (const [dateStr, dayData] of Object.entries(logsByDate)) {
       const leave = leaveDates[dateStr];
@@ -407,15 +424,15 @@ async function getDailyReport(workspaceId, headers, now) {
     }
   }
 
-  let finalReport = [`<@889764524473860116> **Daily Time Log Report** - ${displayDate}`];
-
   if (onLeaveTodayList.length > 0) {
-    finalReport.push(`\n**On Leave Today**`);
+    finalReport.push(`<@889764524473860116> **On Leave Today**`);
     finalReport.push(...onLeaveTodayList);
   }
 
+  let finalReport = [`\n<@889764524473860116> **Last Working Day Log Report - ${displayDate}**`];
+
   if (onLeaveYesterdayList.length > 0) {
-    finalReport.push(`\n**On Leave Yesterday**`);
+    finalReport.push(`\n**On Leave**`);
     finalReport.push(...onLeaveYesterdayList);
   }
 

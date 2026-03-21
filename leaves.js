@@ -15,7 +15,7 @@ const config = require('./config');
  * @returns {Promise<Array>} - Array of leave records
  */
 async function fetchLeaves({ date, startDate, endDate, status = 'APPROVED' }) {
-    const baseUrl = config.zotizensApiUrl || 'https://zotizens.vercel.app';
+    const baseUrl = config.zotizensApiUrl;
     const endpoint = '/api/public/leaves';
     
     let url = `${baseUrl}${endpoint}?status=${status}`;

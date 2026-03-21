@@ -114,7 +114,7 @@ const config = {
     },
 
     timezone: 'Asia/Colombo',
-    zotizensApiUrl: 'https://zotizens.vercel.app',
+    zotizensApiUrl: 'https://zotizens.zotech.xyz',
 
     isPublicHoliday
 };
