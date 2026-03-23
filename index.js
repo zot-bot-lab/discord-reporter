@@ -162,7 +162,7 @@ function getWorkingDays(startDate, endDate) {
  */
 async function processUserDaily(userId, userObj, workspaceId, headers, startUTC, endUTC, targetDateStr, isHalfDay = false) {
   try {
-    const url = `https://api.clockify.me/api/v1/workspaces/${workspaceId}/user/${userId}/time-entries?start=${startUTC}&end=${endUTC}`;
+    const url = `https://api.clockify.me/api/v1/workspaces/${workspaceId}/user/${userId}/time-entries?start=${startUTC}&end=${endUTC}&page-size=5000`;
     const reportRes = await fetch(url, { method: "GET", headers });
 
     if (!reportRes.ok) {
@@ -262,7 +262,7 @@ async function processUserWeekly(userId, userObj, workspaceId, headers, startUTC
     const minHours = adjustedWorkingDays * config.thresholds.weeklyMinHoursPerDay;
     const praiseHours = adjustedWorkingDays * config.thresholds.weeklyPraiseHoursPerDay;
 
-    const url = `https://api.clockify.me/api/v1/workspaces/${workspaceId}/user/${userId}/time-entries?start=${startUTC}&end=${endUTC}`;
+    const url = `https://api.clockify.me/api/v1/workspaces/${workspaceId}/user/${userId}/time-entries?start=${startUTC}&end=${endUTC}&page-size=5000`;
     const reportRes = await fetch(url, { method: "GET", headers });
 
     if (!reportRes.ok) {
