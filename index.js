@@ -424,15 +424,17 @@ async function getDailyReport(workspaceId, headers, now) {
     }
   }
 
+  let finalReport = [`<@889764524473860116> **Daily Status Report**`];
+
   if (onLeaveTodayList.length > 0) {
-    finalReport.push(`<@889764524473860116> **On Leave Today**`);
+    finalReport.push(`\n**On Leave Today**`);
     finalReport.push(...onLeaveTodayList);
   }
 
-  let finalReport = [`\n<@889764524473860116> **Last Working Day Log Report - ${displayDate}**`];
+  finalReport.push(`\n**Last Working Day Logs - ${displayDate}**`);
 
   if (onLeaveYesterdayList.length > 0) {
-    finalReport.push(`\n**On Leave**`);
+    finalReport.push(`\n**On Leave (${displayDate})**`);
     finalReport.push(...onLeaveYesterdayList);
   }
 
