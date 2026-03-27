@@ -203,7 +203,7 @@ async function processUserDaily(userId, userObj, workspaceId, headers, startUTC,
 
     // Adjust threshold for half-day leaves
     const minHoursThreshold = isHalfDay ? (config.thresholds.dailyMinHours / 2) : config.thresholds.dailyMinHours;
-    if (totalHours < minHoursThreshold) issues.push("Logs missing");
+    if (totalHours < minHoursThreshold) issues.push("Incomplete logs");
 
     const expectedStr = isHalfDay ? ` / ${minHoursThreshold}h expected` : '';
     if (issues.length > 0) {
