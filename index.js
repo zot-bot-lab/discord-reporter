@@ -509,8 +509,8 @@ async function getWeeklySummary(workspaceId, headers, now) {
   const praiseList = results.filter(r => r.type === 'praise').map(r => r.message);
   const normalList = results.filter(r => r.type === 'normal').map(r => r.message);
 
-  const startStr = `${lastMonday.getDate().toString().padStart(2, '0')}-${(lastMonday.getMonth() + 1).toString().padStart(2, '0')}`;
-  const endStr = `${lastSunday.getDate().toString().padStart(2, '0')}-${(lastSunday.getMonth() + 1).toString().padStart(2, '0')}`;
+  const startStr = `${lastMonday.getDate().toString().padStart(2, '0')}/${(lastMonday.getMonth() + 1).toString().padStart(2, '0')}`;
+  const endStr = `${lastSunday.getDate().toString().padStart(2, '0')}/${(lastSunday.getMonth() + 1).toString().padStart(2, '0')}`;
 
   let finalReport = [`📊 **Last Week Clockify Summary** (${startStr} to ${endStr})`];
 
@@ -560,7 +560,7 @@ function getWeeklyEventsReport(now) {
       let checkDate = new Date(monday);
       for (let i = 0; i < 7; i++) {
         if (checkDate.getMonth() + 1 === month && checkDate.getDate() === day) {
-          birthdays.push(`🎂 **${user.name}** (${day}/${month})`);
+          birthdays.push(`* [${day}/${month}] - ${user.name}`);
           break;
         }
         checkDate.setDate(checkDate.getDate() + 1);
@@ -573,7 +573,9 @@ function getWeeklyEventsReport(now) {
   for (let i = 0; i < 7; i++) {
     const dateStr = dateFormatter.format(checkDate);
     if (config.isPublicHoliday(dateStr)) {
-      holidays.push(`🏖️ **Holiday** (${checkDate.getDate()}/${checkDate.getMonth() + 1}): ${dateStr}`);
+      const holidayName = config.getPublicHolidayName(dateStr);
+      const displayDateStr = dmyFormatter.format(checkDate);
+      holidays.push(`* [${displayDateStr}] - ${holidayName}`);
     }
     checkDate.setDate(checkDate.getDate() + 1);
   }
@@ -582,18 +584,18 @@ function getWeeklyEventsReport(now) {
     return null;
   }
 
-  const startStr = `${monday.getDate().toString().padStart(2, '0')}-${(monday.getMonth() + 1).toString().padStart(2, '0')}`;
-  const endStr = `${sunday.getDate().toString().padStart(2, '0')}-${(sunday.getMonth() + 1).toString().padStart(2, '0')}`;
+  const startStr = `${monday.getDate().toString().padStart(2, '0')}/${(monday.getMonth() + 1).toString().padStart(2, '0')}`;
+  const endStr = `${sunday.getDate().toString().padStart(2, '0')}/${(sunday.getMonth() + 1).toString().padStart(2, '0')}`;
 
-  let finalReport = [`@everyone\n🗓️ **Weekly Highlights (This Week)** (${startStr} to ${endStr})`];
+  let finalReport = [`@everyone\n🗓️ **Weekly Highlights (${startStr} to ${endStr})**`];
 
   if (birthdays.length > 0) {
-    finalReport.push(`\n**Upcoming Birthdays This Week!**`);
+    finalReport.push(`\n🎂 **Upcoming Birthdays This Week!**`);
     finalReport.push(...birthdays);
   }
 
   if (holidays.length > 0) {
-    finalReport.push(`\n**Upcoming Public Holidays This Week!**`);
+    finalReport.push(`\n🏖️ **Upcoming Holidays This Week!**`);
     finalReport.push(...holidays);
   }
 
