@@ -109,9 +109,8 @@ const config = {
         "65ba46ea34b49b480cab146d": { discordId: "1185813501894201386", name: "Dilan", birthday: "03-05", role: "employee" },
         "65218021e5c62943e1ba89aa": { discordId: "890601217691090954", name: "Shakthi", birthday: "09-03", role: "employee" },
         "652182e8e5c62943e1ba9a96": { discordId: "1000320547957248040", name: "Sheron", birthday: "06-08", role: "employee" },
-        "684182980300f917a0fbc273": { discordId: "1369530176198676550", name: "Vishal", birthday: "14-07", role: "employee" },
         "64af043d5a1474600d24ede6": { discordId: "889764524473860116", name: "Megha", birthday: "21-04", role: "employee" },
-        "68ff1ff0da72376ea5d5850b": { discordId: "1431195342912622697", name: "Nimsara", birthday: "", role: "employee" },
+        "68ff1ff0da72376ea5d5850b": { discordId: "1431195342912622697", name: "Nimsara", birthday: "29-06", role: "employee" },
         "697703496790704cd5eb356a": { discordId: "1217796032377913385", name: "Chanu", birthday: "21-02", role: "employee" }
     },
 

@@ -4,7 +4,7 @@ on:
   schedule:
     # Runs at 3:12 AM UTC (8:42 AM Sri Lanka time, UTC+5:30)
     # Format: minute hour day month day-of-week
-    - cron: '12 3 * * 1-5'  # Monday to Friday
+    - cron: '12 2 * * 0-5'  # Sunday to Friday
   workflow_dispatch:  # Allows manual trigger from GitHub UI
 
 jobs:

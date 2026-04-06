@@ -37,13 +37,6 @@ const dateWithWeekdayFormatter = new Intl.DateTimeFormat('en-GB', {
   weekday: 'short'
 });
 
-const timeFormatter = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'Asia/Colombo',
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false
-});
-
 // ── Helpers ──────────────────────────────────────────────────────────
 
 /** Convert ISO 8601 duration (PT5H30M) to seconds */
@@ -224,7 +217,6 @@ async function processUserWeekly(userId, userObj, workspaceId, headers, startUTC
   try {
     // Calculate leave days for this user in this week
     let leaveDayCount = 0;
-    const leaveTypes = new Set();
     const leaveDates = {};
 
     for (const l of userLeaves) {
@@ -239,7 +231,6 @@ async function processUserWeekly(userId, userObj, workspaceId, headers, startUTC
               if (!leaveDates[dateStr]) {
                 leaveDates[dateStr] = l;
                 leaveDayCount += l.isHalfDay ? 0.5 : 1;
-                leaveTypes.add(l.leaveType);
               }
             }
           }
@@ -252,7 +243,6 @@ async function processUserWeekly(userId, userObj, workspaceId, headers, startUTC
           if (!leaveDates[dateStr]) {
             leaveDates[dateStr] = l;
             leaveDayCount += l.isHalfDay ? 0.5 : 1;
-            leaveTypes.add(l.leaveType);
           }
         }
       }
@@ -340,7 +330,7 @@ async function processUserWeekly(userId, userObj, workspaceId, headers, startUTC
     }
 
     const leaveSuffix = leaveDayCount > 0 ? ` - ${leaveDayCount} day leave${leaveDayCount > 1 ? 's' : ''}` : "";
-    const expectedHours = Math.round(minHours);
+    const expectedHours = Number.isInteger(minHours) ? minHours : minHours.toFixed(1);
     let baseMsg = `<@${userObj.discordId}> (${timeLogged} / ${expectedHours}h expected)${leaveSuffix}`;
 
     if (totalHours < minHours) {
@@ -548,7 +538,6 @@ function getWeeklyEventsReport(now) {
   sunday.setDate(monday.getDate() + 6);
   sunday.setHours(23, 59, 59, 999);
 
-  const weekRangeStr = `${dateFormatter.format(monday)} to ${dateFormatter.format(sunday)}`;
   const birthdays = [];
   const holidays = [];
 
@@ -590,12 +579,12 @@ function getWeeklyEventsReport(now) {
   let finalReport = [`@everyone\n🗓️ **Weekly Highlights (${startStr} to ${endStr})**`];
 
   if (birthdays.length > 0) {
-    finalReport.push(`\n🎂 **Upcoming Birthdays This Week!**`);
+    finalReport.push(`\n🎂 **Upcoming Birthdays!**`);
     finalReport.push(...birthdays);
   }
 
   if (holidays.length > 0) {
-    finalReport.push(`\n🏖️ **Upcoming Holidays This Week!**`);
+    finalReport.push(`\n🏖️ **Upcoming Holidays!**`);
     finalReport.push(...holidays);
   }
 
@@ -609,9 +598,20 @@ async function runGenerators() {
     "Content-Type": "application/json"
   };
 
-  const now = new Date();
-  const todayDateStr = dateFormatter.format(now);
+  const now = process.env.DATE_OVERRIDE ? new Date(process.env.DATE_OVERRIDE) : new Date();
+  const dayOfWeek = now.getDay(); // 0(Sun) - 6(Sat)
 
+  // Sunday only: Send Weekly Highlights for the upcoming week
+  if (dayOfWeek === 0) {
+    console.log("[Trigger] Sunday detected -> generating Weekly Highlights for the upcoming week.");
+    // We send highlights for the week starting tomorrow (Monday)
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const eventsReport = getWeeklyEventsReport(tomorrow);
+    return { daily: null, weekly: null, events: eventsReport };
+  }
+
+  // Regular running days (Mon-Sat, but cron usually limits to Mon-Fri)
+  const todayDateStr = dateFormatter.format(now);
   if (config.isPublicHoliday(todayDateStr)) {
     console.log(`Skipping bot run: Today (${todayDateStr}) is a public/mercantile holiday in Sri Lanka.`);
     return { daily: null, weekly: null, events: null };
@@ -620,17 +620,14 @@ async function runGenerators() {
   const dailyReport = await getDailyReport(workspaceId, headers, now);
 
   let weeklyReport = null;
-  let eventsReport = null;
   if (isFirstWorkingDayOfWeek(now)) {
     console.log("[Trigger] First working day of the week detected -> generating Weekly report.");
     weeklyReport = await getWeeklySummary(workspaceId, headers, now);
-    eventsReport = getWeeklyEventsReport(now);
+    // Weekly highlights now sent on Sunday instead
   }
 
-  return { daily: dailyReport, weekly: weeklyReport, events: eventsReport };
+  return { daily: dailyReport, weekly: weeklyReport, events: null };
 }
-
-// ── Scheduling & Startup ─────────────────────────────────────────────
 
 // ── Scheduling & Startup ─────────────────────────────────────────────
 
@@ -677,9 +674,9 @@ async function sendReports() {
   }
 }
 
-// Run every weekday (Mon–Fri) at 4:00 PM Colombo time
+// Run every day except Saturday (Sun-Fri) at 7:42 AM Colombo time
 cron.schedule(
-  "0 16 * * 1-5",  // 4:00 PM = 16:00
+  "42 7 * * 0-5",  // 7:42 AM = 07:42
   async () => {
     await sendReports();
   },
