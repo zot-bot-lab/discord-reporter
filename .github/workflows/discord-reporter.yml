@@ -1,11 +1,18 @@
 name: Discord Report
 
 on:
-  schedule:
-    # Runs at 3:12 AM UTC (8:42 AM Sri Lanka time, UTC+5:30)
-    # Format: minute hour day month day-of-week
-    - cron: '12 2 * * 0-5'  # Sunday to Friday
-  workflow_dispatch:  # Allows manual trigger from GitHub UI
+  # Commented out in favor of cron-job.org external trigger
+  # schedule:
+  #   # Runs at 4:30 AM UTC (10:00 AM Sri Lanka time, UTC+5:30)
+  #   # Format: minute hour day month day-of-week
+  #   - cron: '30 4 * * 0-5'  # Sunday to Friday
+  workflow_dispatch:  # Allows manual trigger from GitHub UI / API
+    inputs:
+      force:
+        description: 'Force dispatch all reports (runs trigger.js instead of index.js)'
+        required: false
+        default: 'false'
+        type: boolean
 
 jobs:
   send-report:
@@ -33,7 +40,7 @@ jobs:
           GENERAL_CHANNEL_ID: ${{ secrets.GENERAL_CHANNEL_ID }}
           FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          if [ "${{ inputs.force }}" == "true" ]; then
             node trigger.js
           else
             node index.js

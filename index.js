@@ -674,9 +674,9 @@ async function sendReports() {
   }
 }
 
-// Run every day except Saturday (Sun-Fri) at 7:42 AM Colombo time
+// Run every day except Saturday (Sun-Fri) at 10:00 AM Colombo time
 cron.schedule(
-  "42 7 * * 0-5",  // 7:42 AM = 07:42
+  "0 10 * * 0-5",  // 10:00 AM = 10:00
   async () => {
     await sendReports();
   },
