@@ -1,11 +1,10 @@
 name: Discord Report
 
 on:
-  # Commented out in favor of cron-job.org external trigger
   # schedule:
-  #   # Runs at 4:30 AM UTC (10:00 AM Sri Lanka time, UTC+5:30)
-  #   # Format: minute hour day month day-of-week
-  #   - cron: '30 4 * * 0-5'  # Sunday to Friday
+  #   # Scheduled runs migrated to cron-job.org (Account: jayalathmegha@gmail.com) to avoid GitHub Actions cron drift.
+  #   # ~10:00 AM Asia/Colombo (UTC+5:30) on Sunday to Friday
+  #   - cron: '30 4 * * 0-5'
   workflow_dispatch:  # Allows manual trigger from GitHub UI / API
     inputs:
       force:
