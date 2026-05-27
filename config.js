@@ -111,7 +111,8 @@ const config = {
         "652182e8e5c62943e1ba9a96": { discordId: "1000320547957248040", name: "Sheron", birthday: "06-08", role: "employee" },
         "64af043d5a1474600d24ede6": { discordId: "889764524473860116", name: "Megha", birthday: "21-04", role: "employee" },
         "68ff1ff0da72376ea5d5850b": { discordId: "1431195342912622697", name: "Nimsara", birthday: "29-06", role: "employee" },
-        "697703496790704cd5eb356a": { discordId: "1217796032377913385", name: "Chanu", birthday: "21-02", role: "employee" }
+        "697703496790704cd5eb356a": { discordId: "1217796032377913385", name: "Chanu", birthday: "21-02", role: "employee" },
+        "6a13ff679a7b9cfec0a2a6d8": { discordId: "1195203384827973732", name: "Niweja", birthday: "22-02", role: "employee" },
     },
 
     thresholds: {
