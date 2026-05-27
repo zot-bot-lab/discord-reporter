@@ -424,7 +424,7 @@ async function getDailyReport(workspaceId, headers, now) {
   finalReport.push(`\n**Last Working Day Logs - ${displayDate}**`);
 
   if (onLeaveYesterdayList.length > 0) {
-    finalReport.push(`\n**On Leave (${displayDate})**`);
+    finalReport.push(`\n**On Leave**`);
     finalReport.push(...onLeaveYesterdayList);
   }
 
