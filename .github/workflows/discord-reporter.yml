@@ -8,7 +8,7 @@ on:
   workflow_dispatch:  # Allows manual trigger from GitHub UI / API
     inputs:
       force:
-        description: 'Force dispatch all reports (runs trigger.js instead of index.js)'
+        description: 'Force dispatch all reports regardless of the day.'
         required: false
         default: 'false'
         type: boolean
