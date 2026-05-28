@@ -1,17 +1,17 @@
 name: Discord Report
 
 on:
-  # schedule:
-  #   # Scheduled runs migrated to cron-job.org (Account: jayalathmegha@gmail.com) to avoid GitHub Actions cron drift.
-  #   # ~10:00 AM Asia/Colombo (UTC+5:30) on Sunday to Friday
-  #   - cron: '30 4 * * 0-5'
-  workflow_dispatch:  # Allows manual trigger from GitHub UI / API
+  # Scheduled runs migrated to cron-job.org (Account: jayalathmegha@gmail.com) to avoid GitHub Actions cron drift.
+  # Triggered externally via GitHub API (workflow_dispatch or repository_dispatch).
+  workflow_dispatch:  # Allows trigger from GitHub UI or API
     inputs:
       force:
         description: 'Force dispatch all reports regardless of the day.'
         required: false
-        default: 'false'
+        default: false
         type: boolean
+  repository_dispatch:  # Allows external webhooks (e.g., cron-job.org) to trigger the workflow
+    types: [cron_trigger, force_trigger]
 
 jobs:
   send-report:
@@ -39,7 +39,7 @@ jobs:
           GENERAL_CHANNEL_ID: ${{ secrets.GENERAL_CHANNEL_ID }}
           FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         run: |
-          if [ "${{ inputs.force }}" == "true" ]; then
+          if [ "${{ inputs.force }}" == "true" ] || [ "${{ github.event.action }}" == "force_trigger" ]; then
             node trigger.js
           else
             node index.js

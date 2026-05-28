@@ -6,10 +6,10 @@ const config = require("./config.js");
 dotenv.config();
 
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages
-  ]
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages
+    ]
 });
 
 /**
@@ -36,7 +36,7 @@ async function forceDispatch() {
 
     client.once("clientReady", async () => {
         console.log(`✅ Logged in as ${client.user.tag}`);
-        
+
         try {
             // 1. Generate Daily
             console.log("Generating Daily Report...");
@@ -61,9 +61,9 @@ async function forceDispatch() {
             const events = getWeeklyEventsReport(now);
             if (events) {
                 const generalChannel = await client.channels.fetch(process.env.GENERAL_CHANNEL_ID);
-                await generalChannel.send({ 
-                    content: events, 
-                    allowedMentions: { parse: ['everyone', 'users'] } 
+                await generalChannel.send({
+                    content: events,
+                    allowedMentions: { parse: ['everyone', 'users'] }
                 });
                 console.log("✅ Weekly highlights sent to General.");
             } else {
