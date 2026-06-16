@@ -100,19 +100,19 @@ const config = {
     // Clockify user IDs mapped to Discord usernames or tags
     // clockify_id: { discordId, name }
     users: {
-        "ADMIN_DULAJ": { discordId: "927228118341652540", name: "Dulaj", birthday: "20-04", role: "admin" },
-        "ADMIN_ISURU": { discordId: "883292926417989632", name: "Isuru", birthday: "13-05", role: "admin" },
-        "ADMIN_SUDARAKA": { discordId: "834681879894425620", name: "Sudaraka", birthday: "29-08", role: "admin" },
-        "ADMIN_MALAKA": { discordId: "563605515138236436", name: "Malaka", birthday: "25-09", role: "admin" },
-        "672874f70069dd2e09a53498": { discordId: "1302874198812655687", name: "Chamika", birthday: "03-08", role: "employee" },
-        "6777d1891c567d719f83c4c1": { discordId: "1323952767953408032", name: "Charith", birthday: "19-06", role: "employee" },
-        "65ba46ea34b49b480cab146d": { discordId: "1185813501894201386", name: "Dilan", birthday: "03-05", role: "employee" },
-        "65218021e5c62943e1ba89aa": { discordId: "890601217691090954", name: "Shakthi", birthday: "09-03", role: "employee" },
-        "652182e8e5c62943e1ba9a96": { discordId: "1000320547957248040", name: "Sheron", birthday: "06-08", role: "employee" },
-        "64af043d5a1474600d24ede6": { discordId: "889764524473860116", name: "Megha", birthday: "21-04", role: "employee" },
-        "68ff1ff0da72376ea5d5850b": { discordId: "1431195342912622697", name: "Nimsara", birthday: "29-06", role: "employee" },
-        "697703496790704cd5eb356a": { discordId: "1217796032377913385", name: "Chanu", birthday: "21-02", role: "employee" },
-        "6a13ff679a7b9cfec0a2a6d8": { discordId: "1195203384827973732", name: "Niweja", birthday: "22-02", role: "employee" },
+        "ADMIN_DULAJ": { solidTimeId: "ba8173d5-9dd9-40cc-b03a-d32b08e85161", discordId: "927228118341652540", name: "Dulaj", birthday: "20-04", role: "admin" },
+        "ADMIN_ISURU": { solidTimeId: "aa8a503a-34a5-413b-a407-fe8e44885cf2", discordId: "883292926417989632", name: "Isuru", birthday: "13-05", role: "admin" },
+        "ADMIN_SUDARAKA": { solidTimeId: "643f7d3a-876e-49d2-9763-e73939616711", discordId: "834681879894425620", name: "Sudaraka", birthday: "29-08", role: "admin" },
+        "ADMIN_MALAKA": { solidTimeId: "c17cdc4a-e1b4-4c20-88a1-6e813f9e5850", discordId: "563605515138236436", name: "Malaka", birthday: "25-09", role: "admin" },
+        "672874f70069dd2e09a53498": { solidTimeId: "8b77257e-1caf-4138-b66d-cf9097306f6b", discordId: "1302874198812655687", name: "Chamika", birthday: "03-08", role: "employee" },
+        "6777d1891c567d719f83c4c1": { solidTimeId: "6856e9bb-922c-47b7-943d-ebd5fe8b2b59", discordId: "1323952767953408032", name: "Charith", birthday: "19-06", role: "employee" },
+        "65ba46ea34b49b480cab146d": { solidTimeId: "54176224-463b-4375-8ed2-c5dab557080c", discordId: "1185813501894201386", name: "Dilan", birthday: "03-05", role: "employee" },
+        "65218021e5c62943e1ba89aa": { solidTimeId: "bfb0c3d0-1543-4a46-87e6-ed4d61befd5c", discordId: "890601217691090954", name: "Shakthi", birthday: "09-03", role: "employee" },
+        "652182e8e5c62943e1ba9a96": { solidTimeId: "67746abd-7e53-493e-ac53-c39ed74bfbcb", discordId: "1000320547957248040", name: "Sheron", birthday: "06-08", role: "employee" },
+        "64af043d5a1474600d24ede6": { solidTimeId: "4cffff0b-c13d-46d4-9f33-c41a729fafde", discordId: "889764524473860116", name: "Megha", birthday: "21-04", role: "employee" },
+        "68ff1ff0da72376ea5d5850b": { solidTimeId: "3a7a1d89-e79b-4128-8550-f36a1751ab8d", discordId: "1431195342912622697", name: "Nimsara", birthday: "29-06", role: "employee" },
+        "697703496790704cd5eb356a": { solidTimeId: "bbde6bca-32f9-435e-beae-107f64c9e644", discordId: "1217796032377913385", name: "Chanu", birthday: "21-02", role: "employee" },
+        "6a13ff679a7b9cfec0a2a6d8": { solidTimeId: "c7d51f37-5196-4be4-ba02-a8978db14b8e", discordId: "1195203384827973732", name: "Niweja", birthday: "22-02", role: "employee" },
     },
 
     thresholds: {

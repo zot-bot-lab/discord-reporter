@@ -29,13 +29,14 @@ jobs:
       - name: Install dependencies
         run: npm install
       
-      - name: Run Clockify bot
+      - name: Run Solidtime bot
         env:
           DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
           FULL_TIME_ANNOUNCEMENTS_CHANNEL_ID: ${{ secrets.FULL_TIME_ANNOUNCEMENTS_CHANNEL_ID }}
           PROJECT_MANAGEMENT_CHANNEL_ID: ${{ secrets.PROJECT_MANAGEMENT_CHANNEL_ID }}
-          CLOCKIFY_API_KEY: ${{ secrets.CLOCKIFY_API_KEY }}
-          CLOCKIFY_WORKSPACE_ID: ${{ secrets.CLOCKIFY_WORKSPACE_ID }}
+          SOLIDTIME_API_TOKEN: ${{ secrets.SOLIDTIME_API_TOKEN }}
+          SOLIDTIME_ORGANIZATION_ID: ${{ secrets.SOLIDTIME_ORGANIZATION_ID }}
+          SOLIDTIME_API_URL: ${{ secrets.SOLIDTIME_API_URL }}
           GENERAL_CHANNEL_ID: ${{ secrets.GENERAL_CHANNEL_ID }}
           FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         run: |

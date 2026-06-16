@@ -46,7 +46,7 @@ async function fetchLeaves({ date, startDate, endDate, status = 'APPROVED' }) {
 }
 
 /**
- * Builds a Map of leaves keyed by clockifyUserId for quick lookup.
+ * Builds a Map of leaves keyed by user ID (Solidtime ID) for quick lookup.
  * If multiple leaves exist for the same user on the same date, the last one wins.
  * @param {Array} leavesArray 
  * @returns {Map<string, Object>}
@@ -54,6 +54,7 @@ async function fetchLeaves({ date, startDate, endDate, status = 'APPROVED' }) {
 function buildLeaveMap(leavesArray) {
     const map = new Map();
     for (const leave of leavesArray) {
+        // The external Zotizens API returns the user identifier in the 'clockifyUserId' field
         if (leave.clockifyUserId) {
             map.set(leave.clockifyUserId, leave);
         }

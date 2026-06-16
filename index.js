@@ -150,26 +150,29 @@ function getWorkingDays(startDate, endDate) {
 }
 
 /**
- * Fetch and process a single user's Clockify logs for a daily report.
+ * Fetch and process a single user's Solidtime logs for a daily report.
  * @returns {{ type: 'issue'|'praise'|'ok', message?: string }}
  */
-async function processUserDaily(userId, userObj, workspaceId, headers, startUTC, endUTC, targetDateStr, isHalfDay = false) {
+async function processUserDaily(userId, userObj, organizationId, headers, afterStr, beforeStr, targetDateStr, isHalfDay = false) {
   try {
-    const url = `https://api.clockify.me/api/v1/workspaces/${workspaceId}/user/${userId}/time-entries?start=${startUTC}&end=${endUTC}&page-size=5000`;
+    const apiUrl = process.env.SOLIDTIME_API_URL || 'https://app.solidtime.io/api';
+    const url = `${apiUrl}/v1/organizations/${organizationId}/time-entries?user_id=${userId}&after=${afterStr}&before=${beforeStr}&limit=500`;
     const reportRes = await fetch(url, { method: "GET", headers });
 
     if (!reportRes.ok) {
       return { type: 'issue', message: `**${userObj.name}**\n- Error fetching logs` };
     }
 
-    const logs = await reportRes.json();
+    const result = await reportRes.json();
+    const logs = result.data;
     if (!logs || !logs.length) {
       return { type: 'issue', message: `**${userObj.name}**\n- No logs` };
     }
 
     const targetDateLogs = logs.filter(log => {
-      if (!log.timeInterval?.start || !log.timeInterval?.end) return false;
-      const logStart = new Date(log.timeInterval.start);
+      if (log.user_id !== userId) return false;
+      if (!log.start || !log.end) return false;
+      const logStart = new Date(log.start);
       return dateFormatter.format(logStart) === targetDateStr;
     });
 
@@ -181,8 +184,8 @@ async function processUserDaily(userId, userObj, workspaceId, headers, startUTC,
     let hasEmptyDescription = false;
     for (const log of targetDateLogs) {
       if (!log.description || log.description.trim() === "") hasEmptyDescription = true;
-      if (log.timeInterval?.duration) {
-        totalSeconds += parseISODuration(log.timeInterval.duration);
+      if (log.duration) {
+        totalSeconds += log.duration;
       }
     }
 
@@ -211,9 +214,9 @@ async function processUserDaily(userId, userObj, workspaceId, headers, startUTC,
 }
 
 /**
- * Fetch and process a single user's Clockify logs for the entire weekly summary.
+ * Fetch and process a single user's Solidtime logs for the entire weekly summary.
  */
-async function processUserWeekly(userId, userObj, workspaceId, headers, startUTC, endUTC, lastMonday, lastSunday, workingDays, userLeaves = []) {
+async function processUserWeekly(userId, userObj, organizationId, headers, afterStr, beforeStr, lastMonday, lastSunday, workingDays, userLeaves = []) {
   try {
     // Calculate leave days for this user in this week
     let leaveDayCount = 0;
@@ -252,14 +255,16 @@ async function processUserWeekly(userId, userObj, workspaceId, headers, startUTC
     const minHours = adjustedWorkingDays * config.thresholds.weeklyMinHoursPerDay;
     const praiseHours = adjustedWorkingDays * config.thresholds.weeklyPraiseHoursPerDay;
 
-    const url = `https://api.clockify.me/api/v1/workspaces/${workspaceId}/user/${userId}/time-entries?start=${startUTC}&end=${endUTC}&page-size=5000`;
+    const apiUrl = process.env.SOLIDTIME_API_URL || 'https://app.solidtime.io/api';
+    const url = `${apiUrl}/v1/organizations/${organizationId}/time-entries?user_id=${userId}&after=${afterStr}&before=${beforeStr}&limit=500`;
     const reportRes = await fetch(url, { method: "GET", headers });
 
     if (!reportRes.ok) {
       return { type: 'issue', message: `<@${userObj.discordId}>\n- Error fetching logs`, totalHours: 0 };
     }
 
-    const logs = await reportRes.json();
+    const result = await reportRes.json();
+    const logs = result.data;
 
     // Group logs by Date string "YYYY-MM-DD"
     const logsByDate = {};
@@ -281,13 +286,14 @@ async function processUserWeekly(userId, userObj, workspaceId, headers, startUTC
 
     if (logs && logs.length > 0) {
       for (const log of logs) {
-        if (!log.timeInterval?.start || !log.timeInterval?.end) continue;
-        const logStart = new Date(log.timeInterval.start);
+        if (log.user_id !== userId) continue;
+        if (!log.start || !log.end) continue;
+        const logStart = new Date(log.start);
         const dateStr = dateFormatter.format(logStart);
 
         let secs = 0;
-        if (log.timeInterval?.duration) {
-          secs = parseISODuration(log.timeInterval.duration);
+        if (log.duration) {
+          secs = log.duration;
 
           // Only add to weekly total if the log falls strictly between lastMonday and lastSunday boundaries
           if (logStart >= lastMonday && logStart <= lastSunday) {
@@ -351,13 +357,13 @@ async function processUserWeekly(userId, userObj, workspaceId, headers, startUTC
 
 // ── Main Report Function ─────────────────────────────────────────────
 
-async function getDailyReport(workspaceId, headers, now) {
+async function getDailyReport(organizationId, headers, now) {
   const { targetDate, targetDateStr, displayDate } = getLastWorkingDay(now);
 
   const fiveDaysAgo = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
   const tomorrow = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000);
-  const startUTC = fiveDaysAgo.toISOString();
-  const endUTC = tomorrow.toISOString();
+  const afterStr = dateFormatter.format(fiveDaysAgo);
+  const beforeStr = dateFormatter.format(tomorrow);
 
   console.log(`[Daily] TARGET DATE: ${displayDate} (${targetDateStr})`);
 
@@ -378,11 +384,11 @@ async function getDailyReport(workspaceId, headers, now) {
     userEntries.map(async ([userId, userObj]) => {
       const leave = yesterdayLeaveMap.get(userId);
       if (leave && !leave.isHalfDay) {
-        // Full day leave - skip Clockify check
+        // Full day leave - skip Solidtime check
         return { type: 'on-leave-yesterday', message: `**${userObj.name}** (${leave.leaveType})` };
       }
       // Otherwise (no leave OR half day), process check
-      const res = await processUserDaily(userId, userObj, workspaceId, headers, startUTC, endUTC, targetDateStr, !!(leave && leave.isHalfDay));
+      const res = await processUserDaily(userObj.solidTimeId, userObj, organizationId, headers, afterStr, beforeStr, targetDateStr, !!(leave && leave.isHalfDay));
       return res;
     })
   );
@@ -445,7 +451,7 @@ async function getDailyReport(workspaceId, headers, now) {
   return finalReport.join("\n");
 }
 
-async function getWeeklySummary(workspaceId, headers, now) {
+async function getWeeklySummary(organizationId, headers, now) {
   const { lastMonday, lastSunday } = getPreviousWeekRange(now);
   const workingDays = getWorkingDays(lastMonday, lastSunday);
 
@@ -460,19 +466,22 @@ async function getWeeklySummary(workspaceId, headers, now) {
   // Fetch all approved leaves for the week
   const weekLeaves = await fetchLeaves({ startDate: startStrReq, endDate: endStrReq });
 
-  // Group leaves by userId for efficient lookup
+  // Group leaves by leaves ID for efficient lookup
   const leavesByUser = {};
   for (const leave of weekLeaves) {
-    if (!leavesByUser[leave.clockifyUserId]) leavesByUser[leave.clockifyUserId] = [];
-    leavesByUser[leave.clockifyUserId].push(leave);
+    // Zotizens API returns user ID in 'clockifyUserId' field
+    if (leave.clockifyUserId) {
+      if (!leavesByUser[leave.clockifyUserId]) leavesByUser[leave.clockifyUserId] = [];
+      leavesByUser[leave.clockifyUserId].push(leave);
+    }
   }
 
   // Widen UTC window just in case
-  const startQuery = new Date(lastMonday.getTime() - 2 * 24 * 60 * 60 * 1000);
-  const endQuery = new Date(lastSunday.getTime() + 2 * 24 * 60 * 60 * 1000);
+  const startQuery = new Date(lastMonday.getTime() - 3 * 24 * 60 * 60 * 1000);
+  const endQuery = new Date(lastSunday.getTime() + 3 * 24 * 60 * 60 * 1000);
 
-  const startUTC = startQuery.toISOString();
-  const endUTC = endQuery.toISOString();
+  const afterStr = dateFormatter.format(startQuery);
+  const beforeStr = dateFormatter.format(endQuery);
 
   console.log(`[Weekly] Summarizing ${startStrReq} to ${endStrReq}`);
   console.log(`[Weekly] Working Days (Base): ${workingDays}`);
@@ -481,12 +490,12 @@ async function getWeeklySummary(workspaceId, headers, now) {
   const results = await Promise.all(
     userEntries.map(([userId, userObj]) =>
       processUserWeekly(
-        userId,
+        userObj.solidTimeId,
         userObj,
-        workspaceId,
+        organizationId,
         headers,
-        startUTC,
-        endUTC,
+        afterStr,
+        beforeStr,
         lastMonday,
         lastSunday,
         workingDays,
@@ -502,7 +511,7 @@ async function getWeeklySummary(workspaceId, headers, now) {
   const startStr = `${lastMonday.getDate().toString().padStart(2, '0')}/${(lastMonday.getMonth() + 1).toString().padStart(2, '0')}`;
   const endStr = `${lastSunday.getDate().toString().padStart(2, '0')}/${(lastSunday.getMonth() + 1).toString().padStart(2, '0')}`;
 
-  let finalReport = [`📊 **Last Week Clockify Summary** (${startStr} to ${endStr})`];
+  let finalReport = [`📊 **Last Week Solidtime Summary** (${startStr} to ${endStr})`];
 
   if (issuesList.length > 0) {
     finalReport.push(`\n⚠️ **Attention Needed**`);
@@ -592,9 +601,9 @@ function getWeeklyEventsReport(now) {
 }
 
 async function runGenerators() {
-  const workspaceId = process.env.CLOCKIFY_WORKSPACE_ID;
+  const organizationId = process.env.SOLIDTIME_ORGANIZATION_ID;
   const headers = {
-    "X-Api-Key": process.env.CLOCKIFY_API_KEY,
+    "Authorization": `Bearer ${process.env.SOLIDTIME_API_TOKEN}`,
     "Content-Type": "application/json"
   };
 
@@ -617,12 +626,12 @@ async function runGenerators() {
     return { daily: null, weekly: null, events: null };
   }
 
-  const dailyReport = await getDailyReport(workspaceId, headers, now);
+  const dailyReport = await getDailyReport(organizationId, headers, now);
 
   let weeklyReport = null;
   if (isFirstWorkingDayOfWeek(now)) {
     console.log("[Trigger] First working day of the week detected -> generating Weekly report.");
-    weeklyReport = await getWeeklySummary(workspaceId, headers, now);
+    weeklyReport = await getWeeklySummary(organizationId, headers, now);
     // Weekly highlights now sent on Sunday instead
   }
 

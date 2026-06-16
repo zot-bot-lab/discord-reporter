@@ -23,9 +23,9 @@ async function forceDispatch() {
     // But since we are requiring it, we can just use its exported methods.
     const { getDailyReport, getWeeklySummary, getWeeklyEventsReport } = require("./index.js");
 
-    const workspaceId = process.env.CLOCKIFY_WORKSPACE_ID;
+    const organizationId = process.env.SOLIDTIME_ORGANIZATION_ID;
     const headers = {
-        "X-Api-Key": process.env.CLOCKIFY_API_KEY,
+        "Authorization": `Bearer ${process.env.SOLIDTIME_API_TOKEN}`,
         "Content-Type": "application/json"
     };
 
@@ -40,7 +40,7 @@ async function forceDispatch() {
         try {
             // 1. Generate Daily
             console.log("Generating Daily Report...");
-            const daily = await getDailyReport(workspaceId, headers, now);
+            const daily = await getDailyReport(organizationId, headers, now);
             if (daily) {
                 const dailyChannel = await client.channels.fetch(process.env.PROJECT_MANAGEMENT_CHANNEL_ID);
                 await dailyChannel.send({ content: daily, allowedMentions: { parse: ['users'] } });
@@ -49,7 +49,7 @@ async function forceDispatch() {
 
             // 2. Generate Weekly (forced)
             console.log("Generating Weekly Summary...");
-            const weekly = await getWeeklySummary(workspaceId, headers, now);
+            const weekly = await getWeeklySummary(organizationId, headers, now);
             if (weekly) {
                 const weeklyChannel = await client.channels.fetch(process.env.FULL_TIME_ANNOUNCEMENTS_CHANNEL_ID);
                 await weeklyChannel.send({ content: weekly, allowedMentions: { parse: ['users'] } });
