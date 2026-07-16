@@ -104,7 +104,6 @@ const config = {
         "ADMIN_ISURU": { solidTimeId: "aa8a503a-34a5-413b-a407-fe8e44885cf2", discordId: "883292926417989632", name: "Isuru", birthday: "13-05", role: "admin" },
         "ADMIN_SUDARAKA": { solidTimeId: "643f7d3a-876e-49d2-9763-e73939616711", discordId: "834681879894425620", name: "Sudaraka", birthday: "29-08", role: "admin" },
         "ADMIN_MALAKA": { solidTimeId: "c17cdc4a-e1b4-4c20-88a1-6e813f9e5850", discordId: "563605515138236436", name: "Malaka", birthday: "25-09", role: "admin" },
-        "672874f70069dd2e09a53498": { solidTimeId: "8b77257e-1caf-4138-b66d-cf9097306f6b", discordId: "1302874198812655687", name: "Chamika", birthday: "03-08", role: "employee" },
         "6777d1891c567d719f83c4c1": { solidTimeId: "6856e9bb-922c-47b7-943d-ebd5fe8b2b59", discordId: "1323952767953408032", name: "Charith", birthday: "19-06", role: "employee" },
         "65ba46ea34b49b480cab146d": { solidTimeId: "54176224-463b-4375-8ed2-c5dab557080c", discordId: "1185813501894201386", name: "Dilan", birthday: "03-05", role: "employee" },
         "65218021e5c62943e1ba89aa": { solidTimeId: "bfb0c3d0-1543-4a46-87e6-ed4d61befd5c", discordId: "890601217691090954", name: "Shakthi", birthday: "09-03", role: "employee" },
