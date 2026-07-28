@@ -110,7 +110,6 @@ const config = {
         "652182e8e5c62943e1ba9a96": { solidTimeId: "67746abd-7e53-493e-ac53-c39ed74bfbcb", discordId: "1000320547957248040", name: "Sheron", birthday: "06-08", role: "employee" },
         "64af043d5a1474600d24ede6": { solidTimeId: "4cffff0b-c13d-46d4-9f33-c41a729fafde", discordId: "889764524473860116", name: "Megha", birthday: "21-04", role: "employee" },
         "68ff1ff0da72376ea5d5850b": { solidTimeId: "3a7a1d89-e79b-4128-8550-f36a1751ab8d", discordId: "1431195342912622697", name: "Nimsara", birthday: "29-06", role: "employee" },
-        "697703496790704cd5eb356a": { solidTimeId: "bbde6bca-32f9-435e-beae-107f64c9e644", discordId: "1217796032377913385", name: "Chanu", birthday: "21-02", role: "employee" },
         "6a13ff679a7b9cfec0a2a6d8": { solidTimeId: "c7d51f37-5196-4be4-ba02-a8978db14b8e", discordId: "1195203384827973732", name: "Niweja", birthday: "22-02", role: "employee" },
     },
 
