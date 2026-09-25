@@ -107,7 +107,6 @@ const config = {
         "6777d1891c567d719f83c4c1": { solidTimeId: "6856e9bb-922c-47b7-943d-ebd5fe8b2b59", discordId: "1323952767953408032", name: "Charith", birthday: "19-06", role: "employee" },
         "65ba46ea34b49b480cab146d": { solidTimeId: "54176224-463b-4375-8ed2-c5dab557080c", discordId: "1185813501894201386", name: "Dilan", birthday: "03-05", role: "employee" },
         "65218021e5c62943e1ba89aa": { solidTimeId: "bfb0c3d0-1543-4a46-87e6-ed4d61befd5c", discordId: "890601217691090954", name: "Shakthi", birthday: "09-03", role: "employee" },
-        "652182e8e5c62943e1ba9a96": { solidTimeId: "67746abd-7e53-493e-ac53-c39ed74bfbcb", discordId: "1000320547957248040", name: "Sheron", birthday: "06-08", role: "employee" },
         "64af043d5a1474600d24ede6": { solidTimeId: "4cffff0b-c13d-46d4-9f33-c41a729fafde", discordId: "889764524473860116", name: "Megha", birthday: "21-04", role: "employee" },
         "68ff1ff0da72376ea5d5850b": { solidTimeId: "3a7a1d89-e79b-4128-8550-f36a1751ab8d", discordId: "1431195342912622697", name: "Nimsara", birthday: "29-06", role: "parttime_employee" },
         "6a13ff679a7b9cfec0a2a6d8": { solidTimeId: "c7d51f37-5196-4be4-ba02-a8978db14b8e", discordId: "1195203384827973732", name: "Niweja", birthday: "22-02", role: "employee" },
