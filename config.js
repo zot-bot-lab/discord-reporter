@@ -18,9 +18,9 @@ const HOLIDAYS_2026 = {
     "2026-07-29": "Esala Full Moon Poya Day",
     "2026-08-26": "Milad un-Nabi (Prophet's Birthday)",
     "2026-08-27": "Nikini Full Moon Poya Day",
-    "2026-09-24": "Binara Full Moon Poya Day",
-    "2026-10-24": "Vap Full Moon Poya Day",
-    "2026-11-23": "Il Full Moon Poya Day",
+    "2026-09-26": "Binara Full Moon Poya Day",
+    "2026-10-25": "Vap Full Moon Poya Day",
+    "2026-11-24": "Il Full Moon Poya Day",
     "2026-12-23": "Unduvap Full Moon Poya Day",
     "2026-12-25": "Christmas Day"
 };
@@ -56,7 +56,7 @@ const HOLIDAYS_2028 = {
     "2028-03-11": "Madin Full Moon Poya Day",
     "2028-04-09": "Bak Full Moon Poya Day",
     "2028-04-13": "Day prior to Sinhala and Tamil New Year Day",
-    "2028-04-14": "Sinhala and Tamil New Year Day AND Good Friday",
+    "2028-04-14": "Sinhala and Tamil New Year Day",
     "2028-05-01": "May Day",
     "2028-05-08": "Vesak Full Moon Poya Day",
     "2028-05-09": "Day following Vesak Full Moon Poya Day",
